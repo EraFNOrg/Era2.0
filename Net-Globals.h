@@ -2,6 +2,8 @@
 #include "globals.h"
 #include "sdk.h"
 
+// toggeling SERVER code is in globals.h
+
 #if defined(SERVER)
 
 namespace Net

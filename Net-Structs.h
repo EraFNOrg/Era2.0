@@ -40,6 +40,38 @@ namespace Net
 		}
 	};
 
+	struct FNetViewer
+	{
+		UObject* Connection;
+		UObject* InViewer;
+		UObject* ViewTarget;
+		FVector ViewLocation;
+		FVector ViewDir;
+
+		FNetViewer()
+			: Connection(0)
+			, InViewer(0)
+			, ViewTarget(0)
+			, ViewLocation(FVector())
+			, ViewDir(FVector())
+		{
+		}
+
+		FNetViewer(UObject* InConnection, float DeltaSeconds) {
+			auto ViewingController = InConnection->Child<UObject*>("PlayerController");
+
+			// Get viewer coordinates.
+			ViewLocation = ViewTarget->Call<FVector>("K2_GetActorLocation");
+			if (ViewingController)
+			{
+				FRotator ViewRotation = ViewingController->Child<FRotator>("ControlRotation");
+				//ViewingController->GetPlayerViewPoint(ViewLocation, ViewRotation);
+				//ViewDir = ViewRotation.Vector();
+				// that's all for now
+			}
+		}
+	};
+
 	enum class ENetRole
 	{
 		/** No role at all. */
