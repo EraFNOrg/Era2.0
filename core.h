@@ -12,4 +12,5 @@ public:
 	static void InitializeGlobals();
 	static void OnReadyToStartMatch();
 	static void OnServerLoadingScreenDropped();
+	static class UObject* SpawnActorEasy(class UObject* Class, struct FVector Location);
 };

@@ -17,9 +17,8 @@ typedef unsigned __int32 uint32;
 typedef unsigned __int64 uint64;
 
 inline void* (*PE)(class UObject* Object, class UObject* Function, PVOID Params) = nullptr;
-struct SpawnActorParams { unsigned char Params[0x40]; };
-inline class UObject* (*SpawnActor)(class UObject* World, class UObject* Class, struct FVector* Position, struct FRotator* Rotation, SpawnActorParams params);
 inline class UObject* (*StaticFindObject)(class UObject* Class, void* Outer, const wchar_t* Name, bool ExactClass);
+inline struct FString (*GetEngineVersion)();
 inline class UObject* PlayerController;
 inline class UObject* GameMode;
 inline class UObject* UEngine;
@@ -36,5 +35,15 @@ inline class UObject* WorldSettings;
 inline vector<class UObject*> CharacterPartsArray;
 inline bool bLoadedInMatch = false;
 inline bool bDroppedFromAircraft = false;
+
+namespace offsets
+{
+	inline int32 Children;
+	inline int32 SuperClass;
+	inline int32 Next;
+	inline int32 ParamsSize;
+	inline int32 ReturnValueOffset;
+	inline int32 StructSize;
+}
 
 #define _(STR) xorstr(STR).crypt_get()

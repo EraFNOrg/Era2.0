@@ -5,6 +5,18 @@
 #include "peh.h"
 #include "Athena.h"
 
+UObject* Core::SpawnActorEasy(UObject* Class, FVector Location)
+{
+	FTransform Transform;
+
+	Transform.Translation = Location;
+	Transform.Scale3D = FVector(1, 1, 1);
+	Transform.Rotation = FQuat{ 0,0,0,0 };
+
+	auto TempActor = GameStatics->Call<UObject*>(_("BeginDeferredActorSpawnFromClass"), World, Class, Transform, char(0), nullptr);
+	return GameStatics->Call<UObject*>(_("FinishSpawningActor"), TempActor, Transform);
+}
+
 void Core::Setup()
 {
 	AllocConsole();
@@ -28,22 +40,81 @@ void Core::Setup()
 	//SSL BYPASS
 	PGH::Hook((uint64)Redirect::CurlEasy, (uint64)Redirect::CurlEasyHook);
 
-	//INITIALIZE GOBJECTS AND FUNCTIONS
+	//SETUP CORE
 	StaticFindObject = decltype(StaticFindObject)(FindPattern(_("48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC 30 80 3D ? ? ? ? ? 41 0F B6 D9 49 8B F8 48 8B F2")));
 
-	uint64 NameToString = FindPattern(_("48 89 5C 24 ? 57 48 83 EC 40 83 79 04 00 48 8B DA 48 8B F9"));
-	if (!NameToString) NameToString = FindPattern(_("40 53 48 83 EC 40 83 79 04 00 48 8B DA 75 19 E8 ? ? ? ?"));
-	if (!NameToString) NameToString = FindPattern(_("48 89 5C 24 ? 57 48 83 EC 30 83 79 04 00 48 8B DA 48 8B F9"));
-	FNameToString = decltype(FNameToString)(NameToString);
+	GetEngineVersion = decltype(GetEngineVersion)(FindPattern(_("40 53 48 83 EC 20 48 8B D9 E8 ? ? ? ? 48 8B C8 41 B8 04 ? ? ? 48 8B D3")));
 
-	uint64 Free = FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9 48 8B 0D ?"));
-	if (!Free) Free = FindPattern(_("48 85 C9 74 1D 4C 8B 05 ? ? ? ? 4D 85 C0"));
-	if (!Free) Free = FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9"));
-
-	FreeInternal = decltype(FreeInternal)(Free);
-
-	uint64 SpawnActorAddress = FindPattern(_("40 53 56 57 48 83 EC 70 48 8B 05 ? ? ? ? 48 33 C4 48 89 44 24 ? 0F 28 1D ? ? ? ? 0F 57 D2 48 8B B4 24 ? ? ? ? 0F 28 CB"));
-	SpawnActor = decltype(SpawnActor)(SpawnActorAddress);
+	//Initialize hardcoded offsets and Functions
+	switch ((int)(stod(GetEngineVersion().ToString().substr(0, 4)) * 100))
+	{
+	case 416: {
+		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 40 83 79 04 00 48 8B DA 48 8B F9")));
+		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9 48 8B 0D ?")));
+		offsets::Children = 0x38;
+		offsets::Next = 0x28;
+		offsets::ParamsSize = 0x8E;
+		offsets::ReturnValueOffset = 0x90;
+		offsets::SuperClass = 0x30;
+		offsets::StructSize = 0x40;
+		break;
+	}
+	case 419: {
+		FNameToString = decltype(FNameToString)(FindPattern(_("40 53 48 83 EC 40 83 79 04 00 48 8B DA 75 19 E8 ? ? ? ?")));
+		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 1D 4C 8B 05 ? ? ? ? 4D 85 C0")));
+		offsets::Children = 0x38;
+		offsets::Next = 0x28;
+		offsets::ParamsSize = 0x8E;
+		offsets::ReturnValueOffset = 0x90;
+		offsets::SuperClass = 0x30;
+		offsets::StructSize = 0x40;
+		break;
+	}
+	case 420: {
+		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 40 83 79 04 00 48 8B DA 48 8B F9")));
+		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 1D 4C 8B 05 ? ? ? ? 4D 85 C0")));
+		offsets::Children = 0x38;
+		offsets::Next = 0x28;
+		offsets::ParamsSize = 0x8E;
+		offsets::ReturnValueOffset = 0x90;
+		offsets::SuperClass = 0x30;
+		offsets::StructSize = 0x40;
+		break;
+	}
+	case 421: {
+		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 30 83 79 04 00 48 8B DA 48 8B F9")));
+		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
+		offsets::Children = 0x38;
+		offsets::Next = 0x28;
+		offsets::ParamsSize = 0x8E;
+		offsets::ReturnValueOffset = 0x90;
+		offsets::SuperClass = 0x30;
+		offsets::StructSize = 0x40;
+		break;
+	}
+	case 422: {
+		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 30 83 79 04 00 48 8B DA 48 8B F9")));
+		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
+		offsets::Children = 0x48;
+		offsets::Next = 0x28;
+		offsets::ParamsSize = 0x9E;
+		offsets::ReturnValueOffset = 0xA0;
+		offsets::SuperClass = 0x40;
+		offsets::StructSize = 0x50;
+		break;
+	}
+	case 423: {
+		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 30 83 79 04 00 48 8B DA 48 8B F9")));
+		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
+		offsets::Children = 0x48;
+		offsets::Next = 0x28;
+		offsets::ParamsSize = 0x9E;
+		offsets::ReturnValueOffset = 0xA0;
+		offsets::SuperClass = 0x40;
+		offsets::StructSize = 0x50;
+		break;
+	}
+	}
 }
 
 void Core::InitializeHook()
@@ -105,6 +176,8 @@ void Core::OnServerLoadingScreenDropped()
 {
 	Athena::InitializeInventory();
 	Athena::GrantDefaultAbilities();
+	Athena::RemoveNetDebugUI();
+	Athena::TeleportToSpawnIsland();
 }
 
 
