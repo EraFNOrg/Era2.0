@@ -18,21 +18,26 @@ class TArray
 	friend struct FString;
 
 public:
+	inline int Num() const
+	{
+		return count;
+	};
+
 	void Add(T InputData)
 	{
-		Data = (T*)realloc(Data, sizeof(T) * (count + 1));
-		Data[count++] = InputData;
+		data = (T*)realloc(data, sizeof(T) * (count + 1));
+		data[count++] = InputData;
 		max = count;
 	};
 
 	inline T& operator[](int i)
 	{
-		return Data[i];
+		return data[i];
 	};
 
 	inline const T& operator[](int i) const
 	{
-		return Data[i];
+		return data[i];
 	};
 
 	inline int MaxIndex()
@@ -40,7 +45,7 @@ public:
 		return count - 1;
 	}
 
-	T* Data;
+	T* data;
 	int32_t count;
 	int32_t max;
 private:
@@ -58,27 +63,27 @@ struct FString : private TArray<wchar_t>
 
 		if (count)
 		{
-			Data = const_cast<wchar_t*>(other);
+			data = const_cast<wchar_t*>(other);
 		}
 	};
 
 	inline bool IsValid() const
 	{
-		return Data != nullptr;
+		return data != nullptr;
 	}
 
 	const wchar_t* ToWString() const
 	{
-		return Data;
+		return data;
 	}
 
 	std::string ToString() const
 	{
-		auto length = std::wcslen(Data);
+		auto length = std::wcslen(data);
 
 		std::string str(length, '\0');
 
-		std::use_facet<std::ctype<wchar_t>>(std::locale()).narrow(Data, Data + length, '?', &str[0]);
+		std::use_facet<std::ctype<wchar_t>>(std::locale()).narrow(data, data + length, '?', &str[0]);
 
 		return str;
 	}
@@ -103,6 +108,15 @@ struct FName
 		FreeInternal((void*)temp.ToWString());
 
 		return ret;
+	}
+
+	inline bool operator==(FName other)
+	{
+		return ComparisonIndex == other.ComparisonIndex;
+	}
+	inline bool operator!=(FName other)
+	{
+		return ComparisonIndex != other.ComparisonIndex;
 	}
 };
 

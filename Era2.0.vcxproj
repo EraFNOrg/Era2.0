@@ -236,11 +236,14 @@
   <ItemGroup>
     <ClInclude Include="Athena.h" />
     <ClInclude Include="core.h" />
+    <ClInclude Include="Net-Functions.h" />
     <ClInclude Include="globals.h" />
     <ClInclude Include="memory.h" />
+    <ClInclude Include="Net-Globals.h" />
     <ClInclude Include="peh.h" />
     <ClInclude Include="redirect.h" />
     <ClInclude Include="sdk.h" />
+    <ClInclude Include="Net-Structs.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
