@@ -381,11 +381,6 @@ inline UObject* FindObject(const wchar_t* Name)
 	
 	if (ReturnValue) return ReturnValue;
 
-	for (int i = 0; i < 10; i++) {
-		ReturnValue = StaticFindObject(nullptr, nullptr, wstring(Name).substr(0, wcslen(Name) - 1).append(L"214748259").append(to_wstring(i)).c_str(), false);
-		if (ReturnValue) return ReturnValue;
-	}
-
 	return nullptr;
 }
 

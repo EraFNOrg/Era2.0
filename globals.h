@@ -22,6 +22,7 @@ inline struct FString (*GetEngineVersion)();
 inline class UObject* PlayerController;
 inline class UObject* GameMode;
 inline class UObject* UEngine;
+inline class UObject* GameViewportClient;
 inline class UObject* World;
 inline class UObject* Pawn;
 inline class UObject* GameState;

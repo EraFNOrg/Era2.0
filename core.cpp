@@ -119,35 +119,32 @@ void Core::Setup()
 
 void Core::InitializeHook()
 {
-	UEngine = FindObject(_(L"/Engine/Transient.FortEngine_0"));
 	GameStatics = FindObject(_(L"/Script/Engine.Default__GameplayStatics"));
 	kismetMathLib = FindObject(_(L"/Script/Engine.Default__KismetMathLibrary"));
 	kismetGuidLib = FindObject(_(L"/Script/Engine.Default__KismetGuidLibrary"));
 
-	PE = decltype(PE)(UEngine->Vtable[0x40]);
+	PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x40]);
 	DetourHook(&(void*&)PE, ProcessEvent);
+	
+	GameViewportClient = GameStatics->Call<UObject*>(_("GetPlayerController"), FindObject(_(L"/Game/Maps/Frontend.Frontend")), 0)->Child(_("Player"))->Child(_("ViewportClient"));
 }
 
 void Core::InitializeGlobals()
 {
-	PlayerController = UEngine
-		->Child(_("GameViewport"))
+	PlayerController = GameViewportClient	
 		->Child(_("GameInstance"))
 		->Child<TArray<UObject*>>(_("LocalPlayers"))[0]
 		->Child(_("PlayerController"));
 
-	GameMode = UEngine
-		->Child(_("GameViewport"))
+	GameMode = GameViewportClient
 		->Child(_("World"))
 		->Child(_("AuthorityGameMode"));
 
-	GameState = UEngine
-		->Child(_("GameViewport"))
+	GameState = GameViewportClient
 		->Child(_("World"))
 		->Child(_("GameState"));
 
-	World = UEngine
-		->Child(_("GameViewport"))
+	World = GameViewportClient
 		->Child(_("World"));
 
 	WorldSettings = World
@@ -158,7 +155,7 @@ void Core::InitializeGlobals()
 	auto CheatMans = FindObject(_(L"/Script/Engine.CheatManager"));
 	CheatManager = GameStatics->Call<UObject*>(_("SpawnObject"), CheatMans, PlayerController);
 	PlayerController->Child(_("CheatManager")) = CheatManager;
-	UEngine->Child(_("GameViewport"))->Child(_("ViewportConsole")) = GameStatics->Call<UObject*>(_("SpawnObject"), FindObject(_(L"/Script/Engine.Console")), UEngine->Child(_("GameViewport")));
+	GameViewportClient->Child(_("ViewportConsole")) = GameStatics->Call<UObject*>(_("SpawnObject"), FindObject(_(L"/Script/Engine.Console")), GameViewportClient);
 }
 
 //HOOKS
