@@ -5,6 +5,195 @@
 
 namespace Net
 {
+	template<typename ElementType>
+	class TAllocatorBase
+	{
+		void* LinearAllocator;
+		ElementType* Elements;
+
+	public:
+		template<typename Type = void>
+		inline Type* GetAllocation()
+		{
+			return (Type*)Elements;
+		}
+
+		template<typename Type = void>
+		inline const Type* GetAllocation() const 
+		{
+			return (const Type*)Elements;
+		}
+	};
+
+	template<class AllocatorType = TAllocatorBase<uint32>>
+	class TBitArray
+	{
+		AllocatorType AllocatorInstance;
+		int32 NumBits;
+		int32 MaxBits;
+
+		class FRelativeBitReference
+		{
+		public:
+			__forceinline explicit FRelativeBitReference(int32 BitIndex)
+				: DWORDIndex(BitIndex >> ((int32)5))
+				, Mask(1 << (BitIndex & (((int32)32) - 1)))
+			{
+			}
+
+			int32  DWORDIndex;
+			uint32 Mask;
+		};
+
+		class FBitIterator : public FRelativeBitReference
+		{
+			int32 Index;
+			TBitArray<AllocatorType>& IteratedArray;
+			
+			FBitIterator(TBitArray<AllocatorType>& ToIterate, int32 StartIndex)
+				: IteratedArray(ToIterate), Index(StartIndex)
+			{
+			}
+			FBitIterator(TBitArray<AllocatorType>& ToIterate)
+				: IteratedArray(ToIterate), Index(ToIterate.MaxBits)
+			{
+			}
+
+			inline explicit operator bool()
+			{
+				return Index < IteratedArray.Num();
+			}
+			inline FBitIterator& operator++()
+			{
+				++Index;
+				this->Mask <<= 1;
+				if (!this->Mask)
+				{
+					this->Mask = 1;
+					++this->DWORDIndex;
+				}
+				return *this;
+			}
+			inline bool operator*() const
+			{
+				return IteratedArray.ByIndex(Index);
+			}
+			inline bool operator==(const FBitIterator& otherIt) const
+			{
+				return Index == otherIt.Index;
+			}
+			inline bool operator!=(const FBitIterator& otherIt) const
+			{
+				return Index != otherIt.Index;
+			}
+			inline FBitIterator& operator=(const FBitIterator& other)
+			{
+				IteratedArray = other.IteratedArray;
+				Index = other.Index;
+			}
+
+			inline int32 GetIndex() const
+			{
+				return Index;
+			}
+		};
+
+		FBitIterator begin()
+		{
+			return FBitIterator(*this, 0);
+		}
+		FBitIterator begin() const
+		{
+			return FBitIterator(*this, 0);
+		}
+		FBitIterator end()
+		{
+			return FBitIterator(*this);
+		}
+		FBitIterator end() const
+		{
+			return BitArrayBaseIterator(*this);
+		}
+
+		inline int32 Num() const
+		{
+			return NumBits;
+		}
+		inline int32 Max() const
+		{
+			return MaxBits;
+		}
+		inline bool ByIndex() const
+		{
+			return (AllocatorInstance.GetAllocation()[this->DWORDIndex] <<= this->Mask) & 1;
+		}
+	};
+
+	template<typename ArrayType>
+	class TSparseArray
+	{
+		template<bool bConst>
+		class TBaseIterator
+		{
+
+		};
+	};
+	/*
+	template<typename SetType>
+	class TSet
+	{
+
+		template<typename IteratorType>
+		class TBaseIterator
+		{
+			TBaseIterator()
+				:
+			{
+			}
+
+			inline TBaseIterator<IteratorType>& operator++()
+			{
+
+			}
+			inline TBaseIterator<IteratorType>& operator++(int32)
+			{
+
+			}
+			inline bool operator==(TBaseIterator<IteratorType>& otherIt)
+			{
+
+			}
+			inline bool operator!=(TBaseIterator<IteratorType>& otherIt)
+			{
+
+			}
+			inline TBaseIterator<IteratorType>& operator=(TBaseIterator<IteratorType>& other)
+			{
+
+			}
+
+		};
+
+
+		TBaseIterator begin()
+		{
+			return TBaseIterator(*this, 0);
+		}
+		TBaseIterator begin() const
+		{
+			return TBaseIterator(*this, 0);
+		}
+		TBaseIterator end()
+		{
+			return TBaseIterator(*this);
+		}
+		TBaseIterator end() const
+		{
+			return TBaseIterator(*this);
+		}
+
+	};
+	*/
 	template<class ObjectType>
 	class TSharedPtr
 	{
@@ -99,6 +288,7 @@ namespace Net
 
 		DORM_MAX
 	};
+
 }
 
 

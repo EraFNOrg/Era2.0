@@ -20,6 +20,14 @@ namespace Net
 			ActorCallPreReplication = decltype(ActorCallPreReplication)(FindPattern(_("E8 ? ? ? ? 48 83 3F 00 0F B6 6B 14")));
 			ActorIsNetStartupActor = decltype(ActorIsNetStartupActor)(FindPattern(_("E8 ? ? ? ? 48 8B 55 07 84 C0")));
 			RemoveNetworkActor = decltype(RemoveNetworkActor)(FindPattern(_("E8 ? ? ? ? 48 83 C3 10 48 3B DF 75 E7 48 8B 5C 24 ?")));
+
+			if (ActorCallPreReplication && ActorIsNetStartupActor && RemoveNetworkActor)
+			{
+				return true;
+			}
+
+			printf(_("U mom giey"));
+			return false;
 		}
 
 	}

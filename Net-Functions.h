@@ -85,7 +85,7 @@ namespace Net
 	}
 
 	void ServerReplicateActors_BuildConsiderList(UObject* NetDriver, TArray<FNetworkObjectInfo*> OutConsiderList, float ServerTickTime)
-	{
+	{/*
 		int32_t NumInitiallyDormant = 0;
 
 		const bool bUseAdaptiveNetFrequency = false;////////// should be set by the return value of a function
@@ -189,8 +189,9 @@ namespace Net
 		{
 			Globals::RemoveNetworkActor(NetDriver, ActorsToRemove[i]);
 		}
+		*/
 	}
-
+	/*
 	int32 ServerReplicateActors_PrioritizeActors(UObject* NetDriver, UObject* Connection, const TArray<FNetViewer>& ConnectionViewers, const TArray<FNetworkObjectInfo*> ConsiderList, const bool bCPUSaturated, FActorPriority*& OutPriorityList, FActorPriority**& OutPriorityActors)
 	{
 		int32 FinalSortedCount = 0;
@@ -279,7 +280,7 @@ namespace Net
 
 		return FinalSortedCount;
 	}
-
+	*/
 
 	int32 ServerReplicateActors(UObject* NetDriver, float DeltaSeconds)
 	{
@@ -294,7 +295,7 @@ namespace Net
 			return 0;
 		}
 
-		if (!NetDriver->Child(_("World"))p)
+		if (!NetDriver->Child(_("World")))
 		{
 			printf(_("Error: WORLD is nullptr!\n"));
 			return 0;
@@ -303,7 +304,7 @@ namespace Net
 		int NumClientsToTick = ServerReplicateActors_PrepConnections(NetDriver, DeltaSeconds);
 
 		//DO THAT FOR DEBUG
-		//printf(XORSTRING("NumClientsToTick: %d\n"), NumClientsToTick);
+		//printf(_("NumClientsToTick: %d\n"), NumClientsToTick);
 
 		if (NumClientsToTick == 0)
 		{

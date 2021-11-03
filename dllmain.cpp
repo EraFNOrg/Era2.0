@@ -16,8 +16,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH: {
-        Net::ServerReplicateActors_PrepConnections(nullptr, 5.0f);
-        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)(&Main), 0, 0, 0);
+        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)Main, 0, 0, 0);
         break;
     }
     case DLL_PROCESS_DETACH: {
