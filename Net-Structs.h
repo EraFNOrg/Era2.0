@@ -8,7 +8,6 @@ namespace Net
 	template<typename ElementType>
 	class TAllocatorBase
 	{
-		void* LinearAllocator;
 		ElementType* Elements;
 
 	public:
@@ -48,7 +47,7 @@ namespace Net
 		class FBitIterator : public FRelativeBitReference
 		{
 			int32 Index;
-			TBitArray<AllocatorType>& IteratedArray;
+			const TBitArray<AllocatorType>& IteratedArray;
 			
 			FBitIterator(TBitArray<AllocatorType>& ToIterate, int32 StartIndex)
 				: IteratedArray(ToIterate), Index(StartIndex)
@@ -112,7 +111,7 @@ namespace Net
 		}
 		FBitIterator end() const
 		{
-			return BitArrayBaseIterator(*this);
+			return FBitIterator(*this);
 		}
 
 		inline int32 Num() const
@@ -123,20 +122,81 @@ namespace Net
 		{
 			return MaxBits;
 		}
-		inline bool ByIndex() const
+		inline bool ByIndex(int32 Index) const
 		{
-			return (AllocatorInstance.GetAllocation()[this->DWORDIndex] <<= this->Mask) & 1;
+			return (AllocatorInstance.GetAllocation()[Index / 8] <<= this->Mask) & 1;
 		}
 	};
 
 	template<typename ArrayType>
 	class TSparseArray
 	{
-		template<bool bConst>
-		class TBaseIterator
+		TArray<ArrayType> Data;
+		TBitArray AllocationFlags;
+		int32 FirstFreeIndex;
+		int32 NumFreeIndices;
+
+		class FBaseIterator
 		{
 
+			const TSparseArray<ArrayType>& IteratedArray;
+			TBitArray BitArrayIt;
+
+			FBaseIterator(const TSparseArray<ArrayType>& Array, TBitArray& BitIterator)
+				: IteratedArray(Array) : BitArrayIt(BitIterator)
+			{
+			}
+
+			inline FBaseIterator& operator++()
+			{
+				while (true)
+				{
+					++BitArrayIt;
+					
+					if (*BitArrayIt)
+						break;
+				}
+				return *this;
+			}
+			inline ArrayType& operator*()
+			{
+				return IteratedArray[BitArrayIt.GetIndex()];
+			}
+			inline ArrayType& operator->()
+			{
+				return IteratedArray[BitArrayIt.GetIndex()];
+			}
+			inline bool operator==(const FBaseIterator& other)
+			{
+				return BitArrayIt.GetIndex() == other.BitArrayIt.GetIndex();
+			}
+			inline bool operator!=(const FBaseIterator& other)
+			{
+				return BitArrayIt.GetIndex() != other.BitArrayIt.GetIndex();
+			}
 		};
+
+		FBaseIterator begin()
+		{
+			return FBaseIterator(*this, 0);
+		}
+		FBaseIterator begin() const
+		{
+			return FBaseIterator(*this, 0);
+		}
+		FBaseIterator end()
+		{
+			return FBaseIterator(*this);
+		}
+		FBaseIterator end() const
+		{
+			return FBaseIterator(*this);
+		}
+
+		inline ArrayType& operator[](uint32 Index)
+		{
+			return (ArrayType)Data[Index];
+		}
 	};
 	/*
 	template<typename SetType>
