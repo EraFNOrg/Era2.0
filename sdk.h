@@ -173,10 +173,10 @@ public:
 		{
 			if (!Class) break;
 
-			auto Children = *(UObject**)(int64(Class) + 0x38);
+			auto Children = *(UObject**)(int64(Class) + offsets::Children);
 
 			if (!Children) {
-				Class = *(UObject**)(int64(Class) + 0x30);
+				Class = *(UObject**)(int64(Class) + offsets::SuperClass);
 				continue;
 			}
 
@@ -184,7 +184,7 @@ public:
 			{
 				if (Children->Class->GetName() == _("StructProperty"))
 				{
-					auto StructChildren = *(UObject**)(int64(*(UObject**)(int64(Children) + 0x70)) + 0x38);
+					auto StructChildren = *(UObject**)(int64(*(UObject**)(int64(Children) + 0x70)) + offsets::Children);
 
 					while (true)
 					{
@@ -192,7 +192,7 @@ public:
 
 						if (StructChildren->GetName() == name) return  *(T*)(int64(this) + *(uint32*)(int64(Children) + 0x44) + *(uint32*)(int64(StructChildren) + 0x44));
 
-						StructChildren = *(UObject**)(int64(StructChildren) + 0x28);
+						StructChildren = *(UObject**)(int64(StructChildren) + offsets::Next);
 					}
 				}
 
@@ -200,12 +200,12 @@ public:
 			
 				if (Children->GetName() == name) return *(T*)(int64(this) + *(uint32*)(int64(Children) + 0x44));
 
-				Children = *(UObject**)(int64(Children) + 0x28);
+				Children = *(UObject**)(int64(Children) + offsets::Next);
 
 				if (!Children) break;
 			}
 
-			Class = *(UObject**)(int64(Class) + 0x30);
+			Class = *(UObject**)(int64(Class) + offsets::SuperClass);
 		}
 
 		return *(T*)(0);
@@ -215,7 +215,7 @@ public:
 	{
 		auto ReturnVector = vector<int32>();
 
-		auto Children = *(UObject**)(int64(this) + 0x38);
+		auto Children = *(UObject**)(int64(this) + offsets::Children);
 
 		while (true)
 		{
@@ -223,22 +223,22 @@ public:
 
 			ReturnVector.push_back(*(int*)(int64(Children) + 0x44));
 
-			Children = *(UObject**)(int64(Children) + 0x28);
+			Children = *(UObject**)(int64(Children) + offsets::Next);
 		}
 
 		return ReturnVector;
 	}
 
-	template< typename T = int, typename ...Params>
+	template< typename T = int, int16 ReturnOffset = -1, typename ...Params >
 	T Call(string name, Params... args)
 	{
 		auto Function = &(this->Child<UObject>(name));
 
 		if (!IsBadReadPtr(Function)) {
-			auto ParamsSize = *(int16*)(int64(Function) + 0x8E);
-			auto ReturnValueOffset = *(int16*)(int64(Function) + 0x90);
+			auto ParamsSize = *(int16*)(int64(Function) + offsets::ParamsSize);
+			auto ReturnValueOffset = *(int16*)(int64(Function) + offsets::ReturnValueOffset);
 
-			unsigned char* params = (unsigned char*)malloc(ParamsSize);
+			PBYTE params = (PBYTE)malloc(ParamsSize);
 
 			int i = 0;
 
@@ -250,164 +250,14 @@ public:
 
 			PE(this, Function, params);
 
+			if (ReturnValueOffset == -1) ReturnValueOffset = ReturnOffset;
+
 			auto ret = *reinterpret_cast<T*>(int64(params) + ReturnValueOffset);
 			free(params);
 			return ret;
 		}
 	}
 };
-
-class FUObjectItem
-{
-public:
-	UObject* Object;
-	int32_t Flags;
-	int32_t ClusterIndex;
-	int32_t SerialNumber;
-
-	enum class ObjectFlags : int32_t
-	{
-		None = 0,
-		Native = 1 << 25,
-		Async = 1 << 26,
-		AsyncLoading = 1 << 27,
-		Unreachable = 1 << 28,
-		PendingKill = 1 << 29,
-		RootSet = 1 << 30,
-		NoStrongReference = 1 << 31
-	};
-
-	inline bool IsUnreachable() const
-	{
-		return !!(Flags & static_cast<std::underlying_type_t<ObjectFlags>>(ObjectFlags::Unreachable));
-	}
-	inline bool IsPendingKill() const
-	{
-		return !!(Flags & static_cast<std::underlying_type_t<ObjectFlags>>(ObjectFlags::PendingKill));
-	}
-};
-
-class TUObjectArray
-{
-public:
-
-	inline int32_t Num() const
-	{
-		return NumElements;
-	}
-
-	inline UObject* GetByIndex(int32_t index) const
-	{
-		return Objects[index].Object;
-	}
-
-	inline FUObjectItem* GetItemByIndex(int32_t index) const
-	{
-		if (index < NumElements)
-		{
-			return &Objects[index];
-		}
-		return nullptr;
-	}
-
-	FUObjectItem* Objects;
-	int32_t MaxElements;
-	int32_t NumElements;
-
-};
-
-// This struct is used on 4.21 and above.
-struct TUObjectArrayNew
-{
-	FUObjectItem* Objects[9];
-};
-
-struct GObjects
-{
-	TUObjectArrayNew* ObjectArray;
-	BYTE _padding_0[0xC];
-	DWORD ObjectCount;
-};
-
-class FUObjectArray
-{
-public:
-	TUObjectArray ObjObjects;
-};
-
-inline FUObjectArray* OldGobjects;
-inline GObjects* NewGobjects;
-
-inline void NumChunks(int* start, int* end)
-{
-	int cStart = 0, cEnd = 0;
-
-	if (!cEnd)
-	{
-		while (1)
-		{
-			if (NewGobjects->ObjectArray->Objects[cStart] == 0)
-			{
-				cStart++;
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		cEnd = cStart;
-		while (1)
-		{
-			if (NewGobjects->ObjectArray->Objects[cEnd] == 0)
-			{
-				break;
-			}
-			else
-			{
-				cEnd++;
-			}
-		}
-	}
-
-	*start = cStart;
-	*end = cEnd;
-}
-
-static UObject* FindObjectById(uint32_t Id)
-{
-	if (NewGobjects)
-	{
-		int cStart = 0, cEnd = 0;
-		int chunkIndex = 0, chunkSize = 0xFFFF, chunkPos;
-		FUObjectItem* Object;
-
-		NumChunks(&cStart, &cEnd);
-
-		chunkIndex = Id / chunkSize;
-		if (chunkSize * chunkIndex != 0 &&
-			chunkSize * chunkIndex == Id)
-		{
-			chunkIndex--;
-		}
-
-		chunkPos = cStart + chunkIndex;
-		if (chunkPos < cEnd)
-		{
-			Object = NewGobjects->ObjectArray->Objects[chunkPos] + (Id - chunkSize * chunkIndex);
-
-			if (!Object) { return NULL; }
-
-			return Object->Object;
-		}
-	}
-	else
-	{
-		return OldGobjects->ObjObjects.GetByIndex(Id);
-	}
-
-	return nullptr;
-}
 
 struct FVector
 {
@@ -521,10 +371,22 @@ struct FActiveGameplayEffectHandle
 	char UnknownData_5[0x3]; 
 };
 
-inline UObject* SpawnActorEasy(UObject* Class, FVector loc, FRotator rot)
+struct FQuat
 {
-	return SpawnActor(World, Class, &loc, &rot, SpawnActorParams{});
-}
+	float X;
+	float Y;
+	float Z;
+	float W;
+};
+
+struct FTransform
+{
+	FQuat Rotation;
+	FVector Translation;
+	char pad1[0x4];
+	FVector Scale3D;
+	char pad2[0x4];
+};
 
 //Functions
 inline UObject* FindObject(const wchar_t* Name)
@@ -533,12 +395,29 @@ inline UObject* FindObject(const wchar_t* Name)
 	
 	if (ReturnValue) return ReturnValue;
 
-	for (int i = 0; i < 10; i++) {
-		ReturnValue = StaticFindObject(nullptr, nullptr, wstring(Name).substr(0, wcslen(Name) - 1).append(L"214748259").append(to_wstring(i)).c_str(), false);
-		if (ReturnValue) return ReturnValue;
-	}
-
 	return nullptr;
+}
 
+inline TArray<UObject*> GetWidgetsFromClass(UObject* Class)
+{
+	struct {
+		UObject* World;
+		TArray<UObject*> Out;
+		UObject* Class;
+		bool TopLevelOnly;
+	} params;
+
+	params.World = UEngine->Child(_("GameViewport"))->Child(_("World"));
+	params.Class = Class;
+	params.TopLevelOnly = false;
+
+	static UObject* fn = FindObject(_(L"/Script/UMG.WidgetBlueprintLibrary.GetAllWidgetsOfClass"));
+	static UObject* obj = FindObject(_(L"/Script/UMG.Default__WidgetBlueprintLibrary"));
+
+	//printf("Class: %s, Obj: %s, FN: %s\n", Class->GetFullName().c_str(), obj->GetFullName().c_str(), fn->GetFullName().c_str());
+
+	PE(obj, fn, &params);
+
+	return params.Out;
 }
 

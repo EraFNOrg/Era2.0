@@ -15,5 +15,8 @@ public:
 	static void GrantDefaultAbilities();
 	static void InventoryUpdate();
 	static void OnAircraftJump();
+	static void RemoveNetDebugUI();
+	static void TeleportToSpawnIsland();
+	static void GrantAbility(class UObject* Class);
 private:
 };

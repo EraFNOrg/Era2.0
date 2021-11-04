@@ -2,10 +2,11 @@
 #include "memory.h"
 #include "redirect.h"
 #include "sdk.h"
+#include "core.h"
 
 void Athena::SpawnPawn()
 {
-	Pawn = SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), FVector(0,0,5000), FRotator(0,0,0));
+	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), FVector(0,0,5000));
 	PlayerController->Call(_("Possess"), Pawn);
 }
 
@@ -62,8 +63,9 @@ void Athena::DropLoadingScreen()
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapSafeZoneBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("FullMapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
+	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush")).ObjectResource;
 
-	GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush")).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
+	//GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush")).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
 
 	//Playlist
 	auto PlayList = FindObject(_(L"/Game/Athena/Playlists/Playground/Playlist_Playground.Playlist_Playground"));
@@ -83,11 +85,13 @@ void Athena::InventoryUpdate()
 	PlayerController->Call(_("OnRep_QuickBar"));
 	Quickbars->Call(_("OnRep_SecondaryQuickBar"));
 	Quickbars->Call(_("OnRep_PrimaryQuickBar"));
+	PlayerController->Call(_("ClientForceUpdateQuickbar"), char(0));
+	PlayerController->Call(_("ClientForceUpdateQuickbar"), char(1));
 }
 
 void Athena::AddToInventory(class UObject* item, int Count, char Index, int Slot)
 {
-	static auto Size = *(int32*)(int64(FindObject(_(L"/Script/FortniteGame.FortItemEntry"))) + 0x50);
+	static auto Size = *(int32*)(int64(FindObject(_(L"/Script/FortniteGame.FortItemEntry"))) + offsets::StructSize);
 
 	auto ItemInstance = item->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), Count, 1);
 	WorldInventory->Child<TArray<UObject*>>(_("ItemInstances")).Add(ItemInstance);
@@ -132,8 +136,12 @@ void Athena::AddToInventory(class UObject* item, int Count, char Index, int Slot
 void Athena::InitializeInventory()
 {
 	WorldInventory = PlayerController->Child(_("WorldInventory"));
-	Quickbars = SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortQuickBars")), FVector(0,0,0), FRotator(0,0,0));
-	PlayerController->Child(_("QuickBars")) = Quickbars;
+
+	if (auto QB = &PlayerController->Child(_("ClientQuickBars")); !IsBadReadPtr(QB)) Quickbars = *QB;
+	else {
+		Quickbars = Core::SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortQuickBars")), FVector(0, 0, 0));
+		PlayerController->Child(_("QuickBars")) = Quickbars;
+	}
 
 	Quickbars->Call(_("SetOwner"), PlayerController);
 	WorldInventory->Call(_("SetOwner"), PlayerController);
@@ -159,19 +167,47 @@ void Athena::OnServerExecuteInventoryItem(FGuid ItemGuid)
 	}
 }
 
+void Athena::RemoveNetDebugUI()
+{
+	FindObject(_(L"/Script/UMG.Default__WidgetBlueprintLibrary"))->Call<TArray<UObject*>, 0x8>(_("GetAllWidgetsOfClass"), World, TArray<UObject*>(), FindObject(_(L"/Game/Athena/HUD/NetDebugUI.NetDebugUI_C")), false)[0]->Call(_("RemoveFromViewport"));
+}
+
+void Athena::TeleportToSpawnIsland()
+{
+	auto Array = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), World, FindObject(_(L"/Script/FortniteGame.FortPlayerStartWarmup")), TArray<UObject*>());
+	
+	Pawn->Call(_("K2_TeleportTo"), Array[kismetMathLib->Call(_("RandomIntegerInRange"), 0, Array.MaxIndex())]->Call<FVector>(_("K2_GetActorLocation")), FRotator(0,0,0));
+}
+
+void Athena::GrantAbility(UObject* Class)
+{
+	static UObject* GameplayEffect = FindObject(_(L"/Game/Athena/Items/Consumables/PurpleStuff/GE_Athena_PurpleStuff.GE_Athena_PurpleStuff_C"));
+	if (!GameplayEffect) GameplayEffect = FindObject(_(L"/Game/Athena/Items/Consumables/PurpleStuff/GE_Athena_PurpleStuff_Health.GE_Athena_PurpleStuff_Health_C"));
+
+	auto DefaultEffect = FindObject(_(L"/Script/FortniteGame.Default__FortAbilitySystemUI"))->Call<UObject*>(_("GetDefaultObjectOfGameplayEffectType"), GameplayEffect);
+
+	if (Class) DefaultEffect->Child<TArray<FGameplayAbilitySpecDef>>(_("GrantedAbilities"))[0].Ability = Class;
+	DefaultEffect->Child<char>(_("DurationPolicy")) = char(1);
+
+	Pawn->Child(_("AbilitySystemComponent"))->Call<FActiveGameplayEffectHandle>(_("BP_ApplyGameplayEffectToSelf"), GameplayEffect, float(1.0), FGameplayEffectContextHandle());
+}
+
 void Athena::GrantDefaultAbilities()
 {
-
+	GrantAbility(FindObject(_(L"/Script/FortniteGame.FortGameplayAbility_Sprint")));
+	GrantAbility(FindObject(_(L"/Script/FortniteGame.FortGameplayAbility_Jump")));
+	GrantAbility(FindObject(_(L"/Game/Abilities/Player/Generic/Traits/DefaultPlayer/GA_DefaultPlayer_InteractUse.GA_DefaultPlayer_InteractUse_C")));
+	GrantAbility(FindObject(_(L"/Game/Abilities/Player/Generic/Traits/DefaultPlayer/GA_DefaultPlayer_InteractSearch.GA_DefaultPlayer_InteractSearch_C")));
+	GrantAbility(FindObject(_(L"/Game/Athena/DrivableVehicles/GA_AthenaEnterVehicle.GA_AthenaEnterVehicle_C")));
+	GrantAbility(FindObject(_(L"/Game/Athena/DrivableVehicles/GA_AthenaExitVehicle.GA_AthenaExitVehicle_C")));
+	GrantAbility(FindObject(_(L"/Game/Athena/DrivableVehicles/GA_AthenaInVehicle.GA_AthenaInVehicle_C")));
 }
 
 void Athena::OnAircraftJump()
 {
-	auto Location = PlayerController->Call<FVector>(_("GetFocalLocation"));
-	auto Rot = PlayerController->Child(_("PlayerCameraManager"))->Call<FRotator>(_("GetCameraRotation"));
-	Rot.Pitch = 0;
-	Rot.Roll = 0;
+	auto Location = PlayerController->Call<FVector>(_("GetFocalLocation")); 
 
-	Pawn = SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), Location, Rot);
+	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), Location);
 
 	PlayerController->Call(_("Possess"), Pawn);
 
