@@ -128,11 +128,29 @@ namespace Net
 		}
 	};
 
+	template<typename ElementType>
+	union TSparseArrayElementOrListLink
+	{
+		/** If the element is allocated, its value is stored here. */
+		ElementType ElementData;
+
+		struct
+		{
+			/** If the element isn't allocated, this is a link to the previous element in the array's free list. */
+			int32 PrevFreeIndex;
+
+			/** If the element isn't allocated, this is a link to the next element in the array's free list. */
+			int32 NextFreeIndex;
+		};
+	};
+
 	template<typename ArrayType>
 	class TSparseArray
 	{
-		TArray<ArrayType> Data;
-		TBitArray AllocationFlags;
+		typedef TSparseArrayElementOrListLink<ArrayType> FSparseArrayElement;
+
+		TArray<FSparseArrayElement> Data;
+		TBitArray<TAllocatorBase<int32>> AllocationFlags;
 		int32 FirstFreeIndex;
 		int32 NumFreeIndices;
 
@@ -140,10 +158,10 @@ namespace Net
 		{
 
 			const TSparseArray<ArrayType>& IteratedArray;
-			TBitArray BitArrayIt;
+			TBitArray<TAllocatorBase<int32>> BitArrayIt;
 
-			FBaseIterator(const TSparseArray<ArrayType>& Array, TBitArray& BitIterator)
-				: IteratedArray(Array) : BitArrayIt(BitIterator)
+			FBaseIterator(const TSparseArray<ArrayType>& Array, TBitArray<TAllocatorBase<int32>>& BitIterator)
+				: IteratedArray(Array), BitArrayIt(BitIterator)
 			{
 			}
 
@@ -158,11 +176,11 @@ namespace Net
 				}
 				return *this;
 			}
-			inline ArrayType& operator*()
+			inline FSparseArrayElement& operator*()
 			{
 				return IteratedArray[BitArrayIt.GetIndex()];
 			}
-			inline ArrayType& operator->()
+			inline FSparseArrayElement& operator->()
 			{
 				return IteratedArray[BitArrayIt.GetIndex()];
 			}
@@ -178,24 +196,24 @@ namespace Net
 
 		FBaseIterator begin()
 		{
-			return FBaseIterator(*this, 0);
+			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags, 0));
 		}
 		FBaseIterator begin() const
 		{
-			return FBaseIterator(*this, 0);
+			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags, 0));
 		}
 		FBaseIterator end()
 		{
-			return FBaseIterator(*this);
+			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags));
 		}
 		FBaseIterator end() const
 		{
-			return FBaseIterator(*this);
+			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags));
 		}
 
-		inline ArrayType& operator[](uint32 Index)
+		inline FSparseArrayElement& operator[](uint32 Index)
 		{
-			return (ArrayType)Data[Index];
+			return (FSparseArrayElement*)Data[Index];
 		}
 	};
 	/*
