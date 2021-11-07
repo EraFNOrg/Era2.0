@@ -378,6 +378,11 @@ struct FKey
 {
 	FName KeyName;
 	char pad[0x10];
+
+	FKey() {}
+	FKey(FName Name) {
+		KeyName = Name;
+	}
 };
 
 //Functions

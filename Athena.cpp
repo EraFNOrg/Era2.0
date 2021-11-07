@@ -204,6 +204,16 @@ void Athena::ConsoleKey()
 
 void Athena::Tick()
 {
+	static FKey BuildingKey = FKey(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"LeftMouseButton"))));
+
+	if (PlayerController->Call<bool>(_("IsInBuildMode")))
+	{
+		if (PlayerController->Call<bool>(_("IsInputKeyDown"), BuildingKey))
+		{
+			//BUILDING BASE
+		}
+	}
+
 }
 
 void Athena::GrantAbility(UObject* Class)
