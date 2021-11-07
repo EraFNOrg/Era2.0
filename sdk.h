@@ -374,6 +374,12 @@ struct FTransform
 	char pad2[0x4];
 };
 
+struct FKey
+{
+	FName KeyName;
+	char pad[0x10];
+};
+
 //Functions
 inline UObject* FindObject(const wchar_t* Name)
 {

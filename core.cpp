@@ -122,6 +122,7 @@ void Core::InitializeHook()
 	GameStatics = FindObject(_(L"/Script/Engine.Default__GameplayStatics"));
 	kismetMathLib = FindObject(_(L"/Script/Engine.Default__KismetMathLibrary"));
 	kismetGuidLib = FindObject(_(L"/Script/Engine.Default__KismetGuidLibrary"));
+	kismetStringLib = FindObject(_(L"/Script/Engine.Default__KismetStringLibrary"));
 
 	PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x40]);
 	DetourHook(&(void*&)PE, ProcessEvent);
@@ -156,6 +157,9 @@ void Core::InitializeGlobals()
 	CheatManager = GameStatics->Call<UObject*>(_("SpawnObject"), CheatMans, PlayerController);
 	PlayerController->Child(_("CheatManager")) = CheatManager;
 	GameViewportClient->Child(_("ViewportConsole")) = GameStatics->Call<UObject*>(_("SpawnObject"), FindObject(_(L"/Script/Engine.Console")), GameViewportClient);
+
+	//Changes default console bind
+	Athena::ConsoleKey();
 }
 
 //HOOKS
@@ -167,11 +171,11 @@ void Core::OnReadyToStartMatch()
 	Athena::ShowSkin();
 	Athena::DestroyLods();
 	Athena::DropLoadingScreen();
+	Athena::InitializeInventory();
 }
 
 void Core::OnServerLoadingScreenDropped()
 {
-	Athena::InitializeInventory();
 	Athena::GrantDefaultAbilities();
 	Athena::RemoveNetDebugUI();
 	Athena::TeleportToSpawnIsland();
