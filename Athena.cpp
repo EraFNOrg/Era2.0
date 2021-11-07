@@ -17,8 +17,10 @@ void Athena::ShowSkin()
 	static auto HatData = FindObject(_(L"/Script/FortniteGame.CustomCharacterHatData"));
 	static auto BackpackData = FindObject(_(L"/Script/FortniteGame.CustomCharacterBackpackData"));
 
-	static auto Hero = PlayerController->Child(_("MyPlayerInfo"))->Child(_("AthenaMenuHeroDef"));
-	if (IsBadReadPtr(Hero)) Hero = PlayerController->Child(_("MyPlayerInfo"))->Child(_("TempAthenaMenuHeroInstance"));
+	static UObject* Hero = nullptr;
+
+	if (auto TempHero = &PlayerController->Child(_("MyPlayerInfo"))->Child(_("AthenaMenuHeroDef")); !IsBadReadPtr(TempHero)) Hero = *TempHero;
+	if (auto TempHero = &PlayerController->Child(_("MyPlayerInfo"))->Child(_("TempAthenaMenuHeroInstance")); !IsBadReadPtr(TempHero)) Hero = *TempHero;
 
 	static auto CharacterParts = Hero->Child<TArray<UObject*>>(_("CharacterParts"));
 
