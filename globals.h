@@ -32,6 +32,7 @@ inline class UObject* WorldInventory;
 inline class UObject* Quickbars;
 inline class UObject* kismetMathLib;
 inline class UObject* kismetGuidLib;
+inline class UObject* kismetStringLib;
 inline class UObject* WorldSettings;
 inline std::vector<class UObject*> CharacterPartsArray;
 inline bool bLoadedInMatch = false;

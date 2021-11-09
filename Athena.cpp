@@ -17,8 +17,12 @@ void Athena::ShowSkin()
 	static auto HatData = FindObject(_(L"/Script/FortniteGame.CustomCharacterHatData"));
 	static auto BackpackData = FindObject(_(L"/Script/FortniteGame.CustomCharacterBackpackData"));
 
-	static auto CharacterParts = PlayerController->Child(_("StrongMyHero"))
-		->Child<TArray<UObject*>>(_("CharacterParts"));
+	static UObject* Hero = nullptr;
+
+	if (auto TempHero = &PlayerController->Child(_("MyPlayerInfo"))->Child(_("AthenaMenuHeroDef")); !IsBadReadPtr(TempHero)) Hero = *TempHero;
+	if (auto TempHero = &PlayerController->Child(_("MyPlayerInfo"))->Child(_("TempAthenaMenuHeroInstance")); !IsBadReadPtr(TempHero)) Hero = *TempHero;
+
+	static auto CharacterParts = Hero->Child<TArray<UObject*>>(_("CharacterParts"));
 
 	if (CharacterPartsArray.size() == 0)
 		for (auto i = 0; i < CharacterParts.count; i++) CharacterPartsArray.push_back(CharacterParts[i]);
@@ -64,8 +68,7 @@ void Athena::DropLoadingScreen()
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("FullMapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush")).ObjectResource;
-
-	//GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush")).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
+	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
 
 	//Playlist
 	auto PlayList = FindObject(_(L"/Game/Athena/Playlists/Playground/Playlist_Playground.Playlist_Playground"));
@@ -167,6 +170,17 @@ void Athena::OnServerExecuteInventoryItem(FGuid ItemGuid)
 	}
 }
 
+void Athena::OnServerExecuteInventoryWeapon(UObject* FortWeapon)
+{
+	auto ItemGuid = FortWeapon->Child<FGuid>(_("ItemEntryGuid"));
+
+	auto Instances = WorldInventory->Child<TArray<UObject*>>(_("ItemInstances"));
+	for (int i = 0; i < Instances.count; i++) {
+		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instances[i]->Call<FGuid>(_("GetItemGuid")), ItemGuid))
+			Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Instances[i]->Call<UObject*>(_("GetItemDefinitionBP")), Instances[i]->Call<FGuid>(_("GetItemGuid")));
+	}
+}
+
 void Athena::RemoveNetDebugUI()
 {
 	FindObject(_(L"/Script/UMG.Default__WidgetBlueprintLibrary"))->Call<TArray<UObject*>, 0x8>(_("GetAllWidgetsOfClass"), World, TArray<UObject*>(), FindObject(_(L"/Game/Athena/HUD/NetDebugUI.NetDebugUI_C")), false)[0]->Call(_("RemoveFromViewport"));
@@ -177,6 +191,29 @@ void Athena::TeleportToSpawnIsland()
 	auto Array = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), World, FindObject(_(L"/Script/FortniteGame.FortPlayerStartWarmup")), TArray<UObject*>());
 	
 	Pawn->Call(_("K2_TeleportTo"), Array[kismetMathLib->Call(_("RandomIntegerInRange"), 0, Array.MaxIndex())]->Call<FVector>(_("K2_GetActorLocation")), FRotator(0,0,0));
+}
+
+void Athena::ConsoleKey()
+{
+	auto F2Key = FKey();
+
+	F2Key.KeyName = kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"F2")));
+
+	FindObject(_(L"/Script/Engine.Default__InputSettings"))->Child<TArray<FKey>>(_("ConsoleKeys"))[0] = F2Key;
+}
+
+void Athena::Tick()
+{
+	static FKey BuildingKey = FKey(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"LeftMouseButton"))));
+
+	if (PlayerController->Call<bool>(_("IsInBuildMode")))
+	{
+		if (PlayerController->Call<bool>(_("IsInputKeyDown"), BuildingKey))
+		{
+			//BUILDING BASE
+		}
+	}
+
 }
 
 void Athena::GrantAbility(UObject* Class)

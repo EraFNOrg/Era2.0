@@ -19,6 +19,14 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	{
 		Athena::OnServerExecuteInventoryItem(*(FGuid*)(Params));
 	}
+	else if (Function->GetName().find(_("ServerExecuteInventoryWeapon")) != -1)
+	{
+		Athena::OnServerExecuteInventoryWeapon(*(UObject**)(Params));
+	}
+	else if (PlayerController && Object == PlayerController && Function->GetName().find(_("Tick")) != -1)
+	{
+		Athena::Tick();
+	}
 	else if ((Function->GetName().find(_("ServerAttemptAircraftJump")) != -1 ||
 		Function->GetName().find(_("OnAircraftExitedDropZone")) != -1) &&
 		!bDroppedFromAircraft)
