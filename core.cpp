@@ -11,7 +11,7 @@ UObject* Core::SpawnActorEasy(UObject* Class, FVector Location)
 
 	Transform.Translation = Location;
 	Transform.Scale3D = FVector(1, 1, 1);
-	Transform.Rotation = FQuat{ 0,0,0,0 };
+	Transform.Rotation = FQuat{0,0,0,0 };
 
 	auto TempActor = GameStatics->Call<UObject*>(_("BeginDeferredActorSpawnFromClass"), World, Class, Transform, char(0), nullptr);
 	return GameStatics->Call<UObject*>(_("FinishSpawningActor"), TempActor, Transform);
