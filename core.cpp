@@ -45,6 +45,10 @@ void Core::Setup()
 
 	GetEngineVersion = decltype(GetEngineVersion)(FindPattern(_("40 53 48 83 EC 20 48 8B D9 E8 ? ? ? ? 48 8B C8 41 B8 04 ? ? ? 48 8B D3")));
 
+	//This is the fix to arrays behaving "bad", such as causing crashes when attempting to go back to lobby
+	//or freezing the game when adding to inventory in S9+ 
+	Realloc = decltype(Realloc)(FindPattern(_(/*Gonna add sigs tomorrow - danii*/"")));
+
 	//Initialize hardcoded offsets and Functions
 	switch ((int)(stod(GetEngineVersion().ToString().substr(0, 4)) * 100))
 	{

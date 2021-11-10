@@ -20,7 +20,7 @@ class TArray
 public:
 	void Add(T InputData)
 	{
-		Data = (T*)realloc(Data, sizeof(T) * (count + 1));
+		Data = (T*)Realloc(Data, sizeof(T) * (count + 1), 0);
 		Data[count++] = InputData;
 		max = count;
 	};
