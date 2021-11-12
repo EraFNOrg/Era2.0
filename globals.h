@@ -18,6 +18,7 @@ typedef unsigned __int64 uint64;
 
 inline void* (*PE)(class UObject* Object, class UObject* Function, PVOID Params) = nullptr;
 inline class UObject* (*StaticFindObject)(class UObject* Class, void* Outer, const wchar_t* Name, bool ExactClass);
+inline void* (*Realloc)(void* Block, SIZE_T NewSize, uint32 Alignment);
 inline struct FString (*GetEngineVersion)();
 inline class UObject* PlayerController;
 inline class UObject* GameMode;

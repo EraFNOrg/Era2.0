@@ -10,7 +10,7 @@
 
 using namespace std;
 
-//Base classes
+//COREUOBJECT classes
 
 template<class T>
 class TArray
@@ -25,8 +25,8 @@ public:
 
 	void Add(T InputData)
 	{
-		data = (T*)realloc(data, sizeof(T) * (count + 1));
-		data[count++] = InputData;
+		Data = (T*)Realloc(Data, sizeof(T) * (count + 1), 0);
+		Data[count++] = InputData;
 		max = count;
 	};
 
@@ -45,7 +45,17 @@ public:
 		return count - 1;
 	}
 
-	T* data;
+	inline T* begin()
+	{
+		return(T*)(count, Data);
+	}
+
+	inline T* end()
+	{
+		return(T*)(count, Data + count);
+	}
+
+	T* Data;
 	int32_t count;
 	int32_t max;
 private:
@@ -119,8 +129,6 @@ struct FName
 		return ComparisonIndex != other.ComparisonIndex;
 	}
 };
-
-class UObject;
 
 class UObject
 {
@@ -258,6 +266,8 @@ public:
 		}
 	}
 };
+
+//STRUCTS
 
 struct FVector
 {
@@ -399,6 +409,13 @@ struct FKey
 	}
 };
 
+struct KeyMap
+{
+	FName Action;
+	char pad[0x8];
+	FKey Key;
+};
+
 //Functions
 inline UObject* FindObject(const wchar_t* Name)
 {
@@ -409,26 +426,16 @@ inline UObject* FindObject(const wchar_t* Name)
 	return nullptr;
 }
 
-inline TArray<UObject*> GetWidgetsFromClass(UObject* Class)
+inline FKey GetKeyFromAction(string ActionName)
 {
-	struct {
-		UObject* World;
-		TArray<UObject*> Out;
-		UObject* Class;
-		bool TopLevelOnly;
-	} params;
+	static TArray<KeyMap> Settings = TArray<KeyMap>();
 
-	params.World = UEngine->Child(_("GameViewport"))->Child(_("World"));
-	params.Class = Class;
-	params.TopLevelOnly = false;
+	if (auto TempSettings = &(PlayerController->Child(_("PlayerInput"))->Child(_("DesiredPlayerInputSettings"))); !IsBadReadPtr(TempSettings)) Settings = (*TempSettings)->Child<TArray<KeyMap>>(_("ActionMappings"));
+	else if (auto TempSettings = PlayerController->Call<bool>(_("IsUsingGamepad")) ? &(PlayerController->Child(_("PlayerInput"))->Child(_("DesiredGamepadPlayerInputSettings"))) : &(PlayerController->Child(_("PlayerInput"))->Child(_("DesiredKBMPlayerInputSettings"))); !IsBadReadPtr(TempSettings)) Settings = (*TempSettings)->Child<TArray<KeyMap>>(_("ActionMappings"));
 
-	static UObject* fn = FindObject(_(L"/Script/UMG.WidgetBlueprintLibrary.GetAllWidgetsOfClass"));
-	static UObject* obj = FindObject(_(L"/Script/UMG.Default__WidgetBlueprintLibrary"));
-
-	//printf("Class: %s, Obj: %s, FN: %s\n", Class->GetFullName().c_str(), obj->GetFullName().c_str(), fn->GetFullName().c_str());
-
-	PE(obj, fn, &params);
-
-	return params.Out;
+	for (KeyMap Setting : Settings)
+	{
+		if (Setting.Action.ToString() == ActionName)
+			return Setting.Key;
+	}
 }
-

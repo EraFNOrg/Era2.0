@@ -25,18 +25,18 @@ void Athena::ShowSkin()
 	static auto CharacterParts = Hero->Child<TArray<UObject*>>(_("CharacterParts"));
 
 	if (CharacterPartsArray.size() == 0)
-		for (auto i = 0; i < CharacterParts.count; i++) CharacterPartsArray.push_back(CharacterParts[i]);
+		for (UObject* CurrentCharacterPart : CharacterParts) CharacterPartsArray.push_back(CurrentCharacterPart);
 
-	for (auto i = 0; i < CharacterPartsArray.size(); i++)
+	for (UObject* CurrentCharacterPart : CharacterPartsArray)
 	{
-		if (CharacterPartsArray[i]->Child(_("AdditionalData"))->IsA(BodyClass))
-			Pawn->Call(_("ServerChoosePart"), char(1), CharacterPartsArray[i]);
-		else if (CharacterPartsArray[i]->Child(_("AdditionalData"))->IsA(HeadClass))
-			Pawn->Call(_("ServerChoosePart"), char(0), CharacterPartsArray[i]);
-		else if (CharacterPartsArray[i]->Child(_("AdditionalData"))->IsA(HatData))
-			Pawn->Call(_("ServerChoosePart"), char(2), CharacterPartsArray[i]);
-		else if (CharacterPartsArray[i]->Child(_("AdditionalData"))->IsA(BackpackData))
-			Pawn->Call(_("ServerChoosePart"), char(3), CharacterPartsArray[i]);
+		if (CurrentCharacterPart->Child(_("AdditionalData"))->IsA(BodyClass))
+			Pawn->Call(_("ServerChoosePart"), char(1), CurrentCharacterPart);
+		else if (CurrentCharacterPart->Child(_("AdditionalData"))->IsA(HeadClass))
+			Pawn->Call(_("ServerChoosePart"), char(0), CurrentCharacterPart);
+		else if (CurrentCharacterPart->Child(_("AdditionalData"))->IsA(HatData))
+			Pawn->Call(_("ServerChoosePart"), char(2), CurrentCharacterPart);
+		else if (CurrentCharacterPart->Child(_("AdditionalData"))->IsA(BackpackData))
+			Pawn->Call(_("ServerChoosePart"), char(3), CurrentCharacterPart);
 	}
 
 	PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterParts"));
@@ -164,9 +164,9 @@ void Athena::InitializeInventory()
 void Athena::OnServerExecuteInventoryItem(FGuid ItemGuid)
 {
 	auto Instances = WorldInventory->Child<TArray<UObject*>>(_("ItemInstances"));
-	for (int i = 0; i < Instances.count; i++) {
-		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instances[i]->Call<FGuid>(_("GetItemGuid")), ItemGuid)) 
-			Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Instances[i]->Call<UObject*>(_("GetItemDefinitionBP")), Instances[i]->Call<FGuid>(_("GetItemGuid")));
+	for (UObject* Instance : Instances) {
+		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instance->Call<FGuid>(_("GetItemGuid")), ItemGuid))
+			Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Instance->Call<UObject*>(_("GetItemDefinitionBP")), Instance->Call<FGuid>(_("GetItemGuid")));
 	}
 }
 
@@ -175,9 +175,9 @@ void Athena::OnServerExecuteInventoryWeapon(UObject* FortWeapon)
 	auto ItemGuid = FortWeapon->Child<FGuid>(_("ItemEntryGuid"));
 
 	auto Instances = WorldInventory->Child<TArray<UObject*>>(_("ItemInstances"));
-	for (int i = 0; i < Instances.count; i++) {
-		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instances[i]->Call<FGuid>(_("GetItemGuid")), ItemGuid))
-			Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Instances[i]->Call<UObject*>(_("GetItemDefinitionBP")), Instances[i]->Call<FGuid>(_("GetItemGuid")));
+	for (UObject* Instance : Instances) {
+		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instance->Call<FGuid>(_("GetItemGuid")), ItemGuid))
+			Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Instance->Call<UObject*>(_("GetItemDefinitionBP")), Instance->Call<FGuid>(_("GetItemGuid")));
 	}
 }
 
@@ -204,13 +204,12 @@ void Athena::ConsoleKey()
 
 void Athena::Tick()
 {
-	static FKey BuildingKey = FKey(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"LeftMouseButton"))));
+	static FKey BuildingKey = GetKeyFromAction(_("BuildConfirm"));
 
 	if (PlayerController->Call<bool>(_("IsInBuildMode")))
 	{
 		if (PlayerController->Call<bool>(_("IsInputKeyDown"), BuildingKey))
 		{
-			//BUILDING BASE
 		}
 	}
 
@@ -244,7 +243,7 @@ void Athena::OnAircraftJump()
 {
 	auto Location = PlayerController->Call<FVector>(_("GetFocalLocation")); 
 
-	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), Location);
+	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), Location );
 
 	PlayerController->Call(_("Possess"), Pawn);
 

@@ -11,7 +11,7 @@ UObject* Core::SpawnActorEasy(UObject* Class, FVector Location)
 
 	Transform.Translation = Location;
 	Transform.Scale3D = FVector(1, 1, 1);
-	Transform.Rotation = FQuat{ 0,0,0,0 };
+	Transform.Rotation = FQuat{0,0,0,0 };
 
 	auto TempActor = GameStatics->Call<UObject*>(_("BeginDeferredActorSpawnFromClass"), World, Class, Transform, char(0), nullptr);
 	return GameStatics->Call<UObject*>(_("FinishSpawningActor"), TempActor, Transform);
@@ -44,6 +44,10 @@ void Core::Setup()
 	StaticFindObject = decltype(StaticFindObject)(FindPattern(_("48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC 30 80 3D ? ? ? ? ? 41 0F B6 D9 49 8B F8 48 8B F2")));
 
 	GetEngineVersion = decltype(GetEngineVersion)(FindPattern(_("40 53 48 83 EC 20 48 8B D9 E8 ? ? ? ? 48 8B C8 41 B8 04 ? ? ? 48 8B D3")));
+
+	//This is the fix to arrays behaving "bad", such as causing crashes when attempting to go back to lobby
+	//or freezing the game when adding to inventory in S9+ 
+	Realloc = decltype(Realloc)(FindPattern(_(/*Gonna add sigs tomorrow - danii*/"")));
 
 	//Initialize hardcoded offsets and Functions
 	switch ((int)(stod(GetEngineVersion().ToString().substr(0, 4)) * 100))
