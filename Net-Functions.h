@@ -85,14 +85,18 @@ namespace Net
 	}
 
 	void ServerReplicateActors_BuildConsiderList(UObject* NetDriver, TArray<FNetworkObjectInfo*> OutConsiderList, float ServerTickTime)
-	{/*
+	{
 		int32_t NumInitiallyDormant = 0;
 
 		const bool bUseAdaptiveNetFrequency = false;////////// should be set by the return value of a function
 
 		TArray<UObject*> ActorsToRemove;
 
-		for (const TSharedPtr<FNetworkObjectInfo>& ObjectInfo : TSet<int>()) // ?????????
+		//***********************************************************
+		TSet<TSharedPtr<FNetworkObjectInfo>> ActiveNetworkObjects; //
+		//***********************************************************
+
+		for (const TSharedPtr<FNetworkObjectInfo>& ObjectInfo : ActiveNetworkObjects)
 		{
 			auto ActorInfo = ObjectInfo.Object;
 
@@ -189,9 +193,8 @@ namespace Net
 		{
 			Globals::RemoveNetworkActor(NetDriver, ActorsToRemove[i]);
 		}
-		*/
 	}
-	/*
+	
 	int32 ServerReplicateActors_PrioritizeActors(UObject* NetDriver, UObject* Connection, const TArray<FNetViewer>& ConnectionViewers, const TArray<FNetworkObjectInfo*> ConsiderList, const bool bCPUSaturated, FActorPriority*& OutPriorityList, FActorPriority**& OutPriorityActors)
 	{
 		int32 FinalSortedCount = 0;
@@ -217,7 +220,7 @@ namespace Net
 
 			for (FNetworkObjectInfo* ActorInfo : ConsiderList)
 			{
-				AActor* Actor = ActorInfo->Actor;
+				UObject* Actor = ActorInfo->Actor;
 
 				UObject* Channel = Connection->FindActorChannelRef(ActorInfo->WeakActor);
 
@@ -234,7 +237,7 @@ namespace Net
 					}
 				}
 
-				UNetConnection* PriorityConnection = Connection;
+				UObject* PriorityConnection = Connection;
 
 				if (Actor->bOnlyRelevantToOwner)
 				{
@@ -244,7 +247,7 @@ namespace Net
 
 					if (PriorityConnection == nullptr)
 					{
-						if (!bHasNullViewTarget && Channel != NULL && Time - Channel->RelevantTime >= RelevantTimeout)
+						if (!bHasNullViewTarget && Channel != NULL && NetDriver->Child<float>(_("Time")) - Channel->RelevantTime >= NetDriver->Child<float>(_("RelevantTimeout")))
 						{
 							Channel->Close();
 						}
@@ -253,9 +256,9 @@ namespace Net
 					}
 				}
 
-				if (Actor->NetTag != NetTag)
+				if (Actor->Child<int32>(_("NetTag ")) != NetTag)
 				{
-					Actor->NetTag = NetTag;
+					Actor->Child<int32>(_("NetTag ")) = NetTag;
 
 					OutPriorityList[FinalSortedCount] = FActorPriority(PriorityConnection, Channel, ActorInfo, ConnectionViewers, bLowNetBandwidth);
 					OutPriorityActors[FinalSortedCount] = OutPriorityList + FinalSortedCount;
@@ -272,7 +275,7 @@ namespace Net
 				OutPriorityActors[FinalSortedCount] = OutPriorityList + FinalSortedCount;
 				FinalSortedCount++;
 				DeletedCount++;
-			}*
+			}
 			// TSets here too im gonna kms
 
 			//Sort(OutPriorityActors, FinalSortedCount, FCompareFActorPriority());
@@ -280,7 +283,7 @@ namespace Net
 
 		return FinalSortedCount;
 	}
-	*/
+	
 
 	int32 ServerReplicateActors(UObject* NetDriver, float DeltaSeconds)
 	{

@@ -12,13 +12,13 @@ namespace Net
 
 	public:
 		template<typename Type = void>
-		inline Type* GetAllocation()
+		FORCEINLINE Type* GetAllocation()
 		{
 			return (Type*)Elements;
 		}
 
 		template<typename Type = void>
-		inline const Type* GetAllocation() const 
+		FORCEINLINE const Type* GetAllocation() const
 		{
 			return (const Type*)Elements;
 		}
@@ -27,6 +27,8 @@ namespace Net
 	template<class AllocatorType = TAllocatorBase<uint32>>
 	class TBitArray
 	{
+
+	private:
 		AllocatorType AllocatorInstance;
 		int32 NumBits;
 		int32 MaxBits;
@@ -34,7 +36,7 @@ namespace Net
 		class FRelativeBitReference
 		{
 		public:
-			__forceinline explicit FRelativeBitReference(int32 BitIndex)
+			FORCEINLINE explicit FRelativeBitReference(int32 BitIndex)
 				: DWORDIndex(BitIndex >> ((int32)5))
 				, Mask(1 << (BitIndex & (((int32)32) - 1)))
 			{
@@ -44,25 +46,27 @@ namespace Net
 			uint32 Mask;
 		};
 
+	public:
 		class FBitIterator : public FRelativeBitReference
 		{
 			int32 Index;
 			const TBitArray<AllocatorType>& IteratedArray;
-			
-			FBitIterator(TBitArray<AllocatorType>& ToIterate, int32 StartIndex)
+
+		public:
+			FORCEINLINE FBitIterator(TBitArray<AllocatorType>& ToIterate, int32 StartIndex)
 				: IteratedArray(ToIterate), Index(StartIndex)
 			{
 			}
-			FBitIterator(TBitArray<AllocatorType>& ToIterate)
+			FORCEINLINE FBitIterator(TBitArray<AllocatorType>& ToIterate)
 				: IteratedArray(ToIterate), Index(ToIterate.MaxBits)
 			{
 			}
 
-			inline explicit operator bool()
+			FORCEINLINE explicit operator bool()
 			{
 				return Index < IteratedArray.Num();
 			}
-			inline FBitIterator& operator++()
+			FORCEINLINE FBitIterator& operator++()
 			{
 				++Index;
 				this->Mask <<= 1;
@@ -73,56 +77,57 @@ namespace Net
 				}
 				return *this;
 			}
-			inline bool operator*() const
+			FORCEINLINE bool operator*() const
 			{
 				return IteratedArray.ByIndex(Index);
 			}
-			inline bool operator==(const FBitIterator& otherIt) const
+			FORCEINLINE bool operator==(const FBitIterator& otherIt) const
 			{
 				return Index == otherIt.Index;
 			}
-			inline bool operator!=(const FBitIterator& otherIt) const
+			FORCEINLINE bool operator!=(const FBitIterator& otherIt) const
 			{
 				return Index != otherIt.Index;
 			}
-			inline FBitIterator& operator=(const FBitIterator& other)
+			FORCEINLINE FBitIterator& operator=(const FBitIterator& other)
 			{
 				IteratedArray = other.IteratedArray;
 				Index = other.Index;
 			}
 
-			inline int32 GetIndex() const
+			FORCEINLINE int32 GetIndex() const
 			{
 				return Index;
 			}
 		};
 
-		FBitIterator begin()
+	public:
+		FORCEINLINE FBitIterator begin()
 		{
 			return FBitIterator(*this, 0);
 		}
-		FBitIterator begin() const
+		FORCEINLINE FBitIterator begin() const
 		{
 			return FBitIterator(*this, 0);
 		}
-		FBitIterator end()
+		FORCEINLINE FBitIterator end()
 		{
 			return FBitIterator(*this);
 		}
-		FBitIterator end() const
+		FORCEINLINE FBitIterator end() const
 		{
 			return FBitIterator(*this);
 		}
 
-		inline int32 Num() const
+		FORCEINLINE int32 Num() const
 		{
 			return NumBits;
 		}
-		inline int32 Max() const
+		FORCEINLINE int32 Max() const
 		{
 			return MaxBits;
 		}
-		inline bool ByIndex(int32 Index) const
+		FORCEINLINE bool ByIndex(int32 Index) const
 		{
 			return (AllocatorInstance.GetAllocation()[Index / 8] <<= this->Mask) & 1;
 		}
@@ -149,23 +154,26 @@ namespace Net
 	{
 		typedef TSparseArrayElementOrListLink<ArrayType> FSparseArrayElement;
 
+	private:
 		TArray<FSparseArrayElement> Data;
 		TBitArray<TAllocatorBase<int32>> AllocationFlags;
 		int32 FirstFreeIndex;
 		int32 NumFreeIndices;
 
+	public:
 		class FBaseIterator
 		{
 
 			const TSparseArray<ArrayType>& IteratedArray;
 			TBitArray<TAllocatorBase<int32>> BitArrayIt;
 
-			FBaseIterator(const TSparseArray<ArrayType>& Array, TBitArray<TAllocatorBase<int32>>& BitIterator)
+		public:
+			FORCEINLINE FBaseIterator(const TSparseArray<ArrayType>& Array, TBitArray<TAllocatorBase<int32>>& BitIterator)
 				: IteratedArray(Array), BitArrayIt(BitIterator)
 			{
 			}
 
-			inline FBaseIterator& operator++()
+			FORCEINLINE FBaseIterator& operator++()
 			{
 				while (true)
 				{
@@ -176,102 +184,107 @@ namespace Net
 				}
 				return *this;
 			}
-			inline FSparseArrayElement& operator*()
+			FORCEINLINE FSparseArrayElement& operator*()
 			{
 				return IteratedArray[BitArrayIt.GetIndex()];
 			}
-			inline FSparseArrayElement& operator->()
+			FORCEINLINE FSparseArrayElement& operator->()
 			{
 				return IteratedArray[BitArrayIt.GetIndex()];
 			}
-			inline bool operator==(const FBaseIterator& other)
+			FORCEINLINE bool operator==(const FBaseIterator& other)
 			{
 				return BitArrayIt.GetIndex() == other.BitArrayIt.GetIndex();
 			}
-			inline bool operator!=(const FBaseIterator& other)
+			FORCEINLINE bool operator!=(const FBaseIterator& other)
 			{
 				return BitArrayIt.GetIndex() != other.BitArrayIt.GetIndex();
 			}
 		};
 
-		FBaseIterator begin()
+	public:
+		FORCEINLINE FBaseIterator begin()
 		{
 			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags, 0));
 		}
-		FBaseIterator begin() const
+		FORCEINLINE FBaseIterator begin() const
 		{
 			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags, 0));
 		}
-		FBaseIterator end()
+		FORCEINLINE FBaseIterator end()
 		{
 			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags));
 		}
-		FBaseIterator end() const
+		FORCEINLINE FBaseIterator end() const
 		{
 			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags));
 		}
 
-		inline FSparseArrayElement& operator[](uint32 Index)
+		FORCEINLINE FSparseArrayElement& operator[](uint32 Index)
 		{
 			return (FSparseArrayElement*)Data[Index];
 		}
 	};
-	/*
+	
 	template<typename SetType>
 	class TSet
 	{
+		TSparseArray<SetType> Elements;
 
-		template<typename IteratorType>
-		class TBaseIterator
+		mutable void* Hash;
+		mutable int32 HashSize;
+
+		class FBaseIterator
 		{
-			TBaseIterator()
-				:
+			TSparseArray::FBaseIterator ElementIt;
+
+		public:
+			FORCEINLINE FBaseIterator(const TSparseArray::FBaseIterator& InElementIt)
+				: ElementIt(InElementIt)
 			{
 			}
 
-			inline TBaseIterator<IteratorType>& operator++()
+			FORCEINLINE FBaseIterator& operator++()
 			{
-
+				return ElementIt++;
 			}
-			inline TBaseIterator<IteratorType>& operator++(int32)
+			FORCEINLINE bool operator==(FBaseIterator& otherIt)
 			{
-
+				return ElementIt == otherIt.ElementIt;
 			}
-			inline bool operator==(TBaseIterator<IteratorType>& otherIt)
+			FORCEINLINE bool operator!=(FBaseIterator& otherIt)
 			{
-
+				return ElementIt != otherIt.ElementIt;
 			}
-			inline bool operator!=(TBaseIterator<IteratorType>& otherIt)
+			FORCEINLINE FBaseIterator& operator=(FBaseIterator& otherIt)
 			{
-
+				return ElementIt = otherIt.ElementIt;
 			}
-			inline TBaseIterator<IteratorType>& operator=(TBaseIterator<IteratorType>& other)
+			FORCEINLINE TSparseArray<SetType>::FSparseArraySetType operator*()
 			{
-
+				return *ElementIt; 
 			}
-
 		};
 
-
-		TBaseIterator begin()
+	public:
+		FORCEINLINE FBaseIterator begin()
 		{
-			return TBaseIterator(*this, 0);
+			return TBaseIterator(Elements.begin());
 		}
-		TBaseIterator begin() const
+		FORCEINLINE FBaseIterator begin() const
 		{
-			return TBaseIterator(*this, 0);
+			return TBaseIterator(Elements.begin());
 		}
-		TBaseIterator end()
+		FORCEINLINE FBaseIterator end()
 		{
-			return TBaseIterator(*this);
+			return TBaseIterator(Elements.end());
 		}
-		TBaseIterator end() const
+		FORCEINLINE FBaseIterator end() const
 		{
-			return TBaseIterator(*this);
+			return TBaseIterator(Elements.end());
 		}
-
 	};
-	*/
+	
 	template<class ObjectType>
 	class TSharedPtr
 	{
@@ -281,6 +294,78 @@ namespace Net
 		int32_t SharedReferenceCount;
 		int32_t WeakReferenceCount;
 	};
+
+	template<class PtrType>
+	class TWeakObjectPtr
+	{
+		int32 ObjectIndex;
+		int32 ObjectSerialNumber;
+
+		// FISCHSALAT: I'd implement a get function to get be able to "dereference" the pointer, but well, danii removed GObjects
+	};
+
+	struct FActorDestructionInfo
+	{
+		TWeakObjectPtr<UObject>		Level;
+		TWeakObjectPtr<UObject>		ObjOuter;
+		FVector						DestroyedPosition;
+		uint32						NetGUID;
+		FString						PathName;
+
+		FName						StreamingLevelName;
+	};
+
+	struct FActorPriority
+	{
+		int32 Priority;		// Update priority, higher = more important.
+
+		FNetworkObjectInfo* ActorInfo;	// Actor info.
+		UObject* Channel;				// Actor channel.
+
+		FActorDestructionInfo* DestructionInfo;	// Destroy an actor
+
+		FActorPriority(UObject* InConnection, UObject* InChannel, FNetworkObjectInfo* InActorInfo, const TArray<struct FNetViewer>& Viewers, bool bLowBandwidth)
+			: ActorInfo(InActorInfo), Channel(InChannel), DestructionInfo(NULL)
+		{
+			float Time = Channel ? (InConnection->Child(_("Driver"))->Child<float>(_("Time")) - Channel->LastUpdateTime) : InConnection->Driver->SpawnPrioritySeconds;
+			// take the highest priority of the viewers on this connection
+			Priority = 0;
+			for (int32 i = 0; i < Viewers.Num(); i++)
+			{
+				Priority = FMath::Max<int32>(Priority, FMath::RoundToInt(65536.0f * ActorInfo->Actor->GetNetPriority(Viewers[i].ViewLocation, Viewers[i].ViewDir, Viewers[i].InViewer, Viewers[i].ViewTarget, InChannel, Time, bLowBandwidth)));
+			}
+		}
+
+		FActorPriority(class UObject* InConnection, struct FActorDestructionInfo* Info, const TArray<struct FNetViewer>& Viewers)
+			: ActorInfo(NULL), Channel(NULL), DestructionInfo(Info)
+		{
+
+			Priority = 0;
+
+			for (int32 i = 0; i < Viewers.Num(); i++)
+			{
+				float Time = InConnection->Child(_("Driver"))->Child<float>(_("SpawnPrioritySeconds"));
+
+				FVector Dir = DestructionInfo->DestroyedPosition - Viewers[i].ViewLocation;
+				float DistSq = Dir.SizeSquared();
+
+				// adjust priority based on distance and whether actor is in front of viewer
+				if ((Viewers[i].ViewDir | Dir) < 0.f)
+				{
+					if (DistSq > (2000.f* 2000.f))
+						Time *= 0.2f;
+					else if (DistSq > (500.0f*500.0f))
+						Time *= 0.4f;
+				}
+				else if (DistSq > (3162.0f* 3162.0f))
+					Time *= 0.4f;
+
+				Priority = Priority >= (65536.0f * Time) ? Priority : (65536.0f * Time);
+			}
+		}
+	};
+
+	
 
 	struct FNetworkObjectInfo
 	{

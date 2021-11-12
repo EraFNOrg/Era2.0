@@ -25,8 +25,8 @@ public:
 
 	void Add(T InputData)
 	{
-		Data = (T*)Realloc(Data, sizeof(T) * (count + 1), 0);
-		Data[count++] = InputData;
+		data = (T*)Realloc(data, sizeof(T) * (count + 1), 0);
+		data[count++] = InputData;
 		max = count;
 	};
 
@@ -47,15 +47,23 @@ public:
 
 	inline T* begin()
 	{
-		return(T*)(count, Data);
+		return(T*)(count, data);
+	}
+	inline T* begin() const
+	{
+		return(T*)(count, data);
 	}
 
 	inline T* end()
 	{
-		return(T*)(count, Data + count);
+		return(T*)(count, data + count);
+	}
+	inline T* end() const
+	{
+		return(T*)(count, data + count);
 	}
 
-	T* Data;
+	T* data;
 	int32_t count;
 	int32_t max;
 private:
@@ -283,6 +291,20 @@ public:
 		Y = _Y;
 		Z = _Z;
 	}
+	FORCEINLINE FVector operator-(const FVector& V) const
+	{
+		return { X - V.X, Y - V.Y, Z - V.Z };
+	}
+
+	FORCEINLINE float operator|(const FVector& V) const
+	{
+		return X * V.X + Y * V.Y + Z * V.Z;
+	}
+	FORCEINLINE float SizeSquared() const
+	{
+		return X * X + Y * Y + Z * Z;
+	}
+
 };
 
 struct FRotator
