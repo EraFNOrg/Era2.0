@@ -4,7 +4,7 @@
 #include <vector>
 #include "Libraries/xorstr.hpp"
 
-using namespace std;
+#define SERVER
 
 typedef __int8 int8;
 typedef __int16 int16;
@@ -35,7 +35,7 @@ inline class UObject* kismetMathLib;
 inline class UObject* kismetGuidLib;
 inline class UObject* kismetStringLib;
 inline class UObject* WorldSettings;
-inline vector<class UObject*> CharacterPartsArray;
+inline std::vector<class UObject*> CharacterPartsArray;
 inline bool bLoadedInMatch = false;
 inline bool bDroppedFromAircraft = false;
 
