@@ -3,7 +3,8 @@
 #include <windows.h>
 #include <psapi.h>
 #include <vector> 
-#include "detours.h"
+#include "Libraries/MinHook.h"
+#pragma comment(lib, "Libraries/libMinHook.x64.lib")
 
 namespace PGH {
 	static unsigned __int64 oldfunc;
@@ -118,12 +119,10 @@ static __forceinline uintptr_t FindPattern(const char* signature, bool bRelative
 	return NULL;
 }
 
-inline void DetourHook(void** ppPointer, void* pDetour)
+//Cr: minhook
+inline void Hook(void* pAddress, void** pFunc, void* pDetour)
 {
-	DetourTransactionBegin();
-	DetourUpdateThread(GetCurrentThread());
-
-	DetourAttach(ppPointer, pDetour);
-
-	DetourTransactionCommit();
+	MH_Initialize();
+	MH_CreateHook(pAddress, pDetour, pFunc);
+	MH_EnableHook(pAddress);
 }

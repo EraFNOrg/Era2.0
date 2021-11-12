@@ -41,12 +41,12 @@ inline bool bDroppedFromAircraft = false;
 
 namespace offsets
 {
-	inline int32 Children;
-	inline int32 SuperClass;
-	inline int32 Next;
-	inline int32 ParamsSize;
-	inline int32 ReturnValueOffset;
-	inline int32 StructSize;
+	inline int32 Children = 0x38;
+	inline int32 Next = 0x28;
+	inline int32 ParamsSize = 0x8E;
+	inline int32 ReturnValueOffset = 0x90;
+	inline int32 SuperClass = 0x30;
+	inline int32 StructSize = 0x40;
 }
 
 #define _(STR) xorstr(STR).crypt_get()
