@@ -20,6 +20,7 @@ public:
 	static void TeleportToSpawnIsland();
 	static void ConsoleKey();
 	static void Tick();
+	static void CheatScript(const char* script);
 	static void GrantAbility(class UObject* Class);
 private:
 };

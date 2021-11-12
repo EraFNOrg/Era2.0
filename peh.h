@@ -33,6 +33,10 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	{
 		Athena::OnAircraftJump();
 	}
+	else if (Function->GetName().find(_("CheatScript")) != -1)
+	{
+		Athena::CheatScript(((FString*)Params)->ToString().c_str());
+	}
 
 	return PE(Object, Function, Params);
 }

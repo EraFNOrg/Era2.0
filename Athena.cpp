@@ -216,6 +216,35 @@ void Athena::Tick()
 
 }
 
+void Athena::CheatScript(const char* script)
+{
+	string ScriptFullName = string(script);
+
+	if (ScriptFullName.find("StartEvent") != -1)
+	{
+		bool bEventStarted = false;
+
+		auto CattusDoggus = FindObject(_(L"/Game/Athena/Maps/Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.BP_CattusDoggus_Scripting_2"));
+		auto RocketEvent = FindObject(_(L"Athena_Gameplay_Geode.PersistentLevel.LevelSequence_LaunchRocket.AnimationPlayer"));
+
+		if (CattusDoggus)
+		{
+			CattusDoggus->Call<bool>(_("LoadCattusLevel"));
+			CattusDoggus->Call(_("startevent"));
+
+			bEventStarted = !bEventStarted;
+		}
+		else if (RocketEvent)
+		{
+			RocketEvent->Call(_("Play"));
+
+			bEventStarted = !bEventStarted;
+		}
+
+		if (bEventStarted) GameMode->Call(_("Say"), FString(_(L"The event started successfully. Enjoy!")));
+	}
+}
+
 void Athena::GrantAbility(UObject* Class)
 {
 	static UObject* GameplayEffect = FindObject(_(L"/Game/Athena/Items/Consumables/PurpleStuff/GE_Athena_PurpleStuff.GE_Athena_PurpleStuff_C"));
