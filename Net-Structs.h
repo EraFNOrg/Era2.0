@@ -81,18 +81,18 @@ namespace Net
 			{
 				return IteratedArray.ByIndex(Index);
 			}
-			FORCEINLINE bool operator==(const FBitIterator& otherIt) const
+			FORCEINLINE bool operator==(const FBitIterator& OtherIt) const
 			{
-				return Index == otherIt.Index;
+				return Index == OtherIt.Index;
 			}
-			FORCEINLINE bool operator!=(const FBitIterator& otherIt) const
+			FORCEINLINE bool operator!=(const FBitIterator& OtherIt) const
 			{
-				return Index != otherIt.Index;
+				return Index != OtherIt.Index;
 			}
-			FORCEINLINE FBitIterator& operator=(const FBitIterator& other)
+			FORCEINLINE FBitIterator& operator=(const FBitIterator& Other)
 			{
-				IteratedArray = other.IteratedArray;
-				Index = other.Index;
+				IteratedArray = Other.IteratedArray;
+				Index = Other.Index;
 			}
 
 			FORCEINLINE int32 GetIndex() const
@@ -108,7 +108,7 @@ namespace Net
 		}
 		FORCEINLINE FBitIterator begin() const
 		{
-			return FBitIterator(*this, 0);
+			return const FBitIterator(*this, 0);
 		}
 		FORCEINLINE FBitIterator end()
 		{
@@ -116,7 +116,7 @@ namespace Net
 		}
 		FORCEINLINE FBitIterator end() const
 		{
-			return FBitIterator(*this);
+			return const FBitIterator(*this);
 		}
 
 		FORCEINLINE int32 Num() const
@@ -152,6 +152,7 @@ namespace Net
 	template<typename ArrayType>
 	class TSparseArray
 	{
+	public:
 		typedef TSparseArrayElementOrListLink<ArrayType> FSparseArrayElement;
 
 	private:
@@ -164,7 +165,7 @@ namespace Net
 		class FBaseIterator
 		{
 
-			const TSparseArray<ArrayType>& IteratedArray;
+			TSparseArray<ArrayType>& IteratedArray;
 			TBitArray<TAllocatorBase<int32>> BitArrayIt;
 
 		public:
@@ -184,21 +185,29 @@ namespace Net
 				}
 				return *this;
 			}
-			FORCEINLINE FSparseArrayElement& operator*()
+			FORCEINLINE ArrayType& operator*()
 			{
-				return IteratedArray[BitArrayIt.GetIndex()];
+				return IteratedArray[BitArrayIt.GetIndex()].ElementData;
 			}
-			FORCEINLINE FSparseArrayElement& operator->()
+			FORCEINLINE const ArrayType& operator*() const
 			{
-				return IteratedArray[BitArrayIt.GetIndex()];
+				return IteratedArray[BitArrayIt.GetIndex()].ElementData;
 			}
-			FORCEINLINE bool operator==(const FBaseIterator& other)
+			FORCEINLINE ArrayType& operator->()
 			{
-				return BitArrayIt.GetIndex() == other.BitArrayIt.GetIndex();
+				return IteratedArray[BitArrayIt.GetIndex()].ElementData;
 			}
-			FORCEINLINE bool operator!=(const FBaseIterator& other)
+			FORCEINLINE const ArrayType& operator->() const
 			{
-				return BitArrayIt.GetIndex() != other.BitArrayIt.GetIndex();
+				return IteratedArray[BitArrayIt.GetIndex()].ElementData;
+			}
+			FORCEINLINE bool operator==(const FBaseIterator& Other) const
+			{
+				return BitArrayIt.GetIndex() == Other.BitArrayIt.GetIndex();
+			}
+			FORCEINLINE bool operator!=(const FBaseIterator& Other) const
+			{
+				return BitArrayIt.GetIndex() != Other.BitArrayIt.GetIndex();
 			}
 		};
 
@@ -209,7 +218,7 @@ namespace Net
 		}
 		FORCEINLINE FBaseIterator begin() const
 		{
-			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags, 0));
+			return const FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags, 0));
 		}
 		FORCEINLINE FBaseIterator end()
 		{
@@ -217,12 +226,16 @@ namespace Net
 		}
 		FORCEINLINE FBaseIterator end() const
 		{
-			return FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags));
+			return const FBaseIterator(*this, TBitArray::FBitIterator(AllocationFlags));
 		}
 
 		FORCEINLINE FSparseArrayElement& operator[](uint32 Index)
 		{
 			return (FSparseArrayElement*)Data[Index];
+		}
+		FORCEINLINE const FSparseArrayElement& operator[](uint32 Index) const
+		{
+			return (const FSparseArrayElement*)Data[Index];
 		}
 	};
 	
@@ -236,10 +249,10 @@ namespace Net
 
 		class FBaseIterator
 		{
-			TSparseArray::FBaseIterator ElementIt;
+			TSparseArray<SetType>::FBaseIterator& ElementIt;
 
 		public:
-			FORCEINLINE FBaseIterator(const TSparseArray::FBaseIterator& InElementIt)
+			FORCEINLINE FBaseIterator(TSparseArray<SetType>::FBaseIterator& InElementIt)
 				: ElementIt(InElementIt)
 			{
 			}
@@ -248,21 +261,33 @@ namespace Net
 			{
 				return ElementIt++;
 			}
-			FORCEINLINE bool operator==(FBaseIterator& otherIt)
+			FORCEINLINE bool operator==(const FBaseIterator& OtherIt) const
 			{
-				return ElementIt == otherIt.ElementIt;
+				return ElementIt == OtherIt.ElementIt;
 			}
-			FORCEINLINE bool operator!=(FBaseIterator& otherIt)
+			FORCEINLINE bool operator!=(const FBaseIterator& OtherIt) const
 			{
-				return ElementIt != otherIt.ElementIt;
+				return ElementIt != OtherIt.ElementIt;
 			}
-			FORCEINLINE FBaseIterator& operator=(FBaseIterator& otherIt)
+			FORCEINLINE FBaseIterator& operator=(FBaseIterator& OtherIt)
 			{
-				return ElementIt = otherIt.ElementIt;
+				return ElementIt = OtherIt.ElementIt;
 			}
-			FORCEINLINE TSparseArray<SetType>::FSparseArraySetType operator*()
+			FORCEINLINE SetType& operator*()
 			{
 				return *ElementIt; 
+			}
+			FORCEINLINE const SetType& operator*() const
+			{
+				return *ElementIt;
+			}
+			FORCEINLINE SetType& operator->()
+			{
+				return *ElementIt;
+			}
+			FORCEINLINE const SetType& operator->() const
+			{
+				return *ElementIt;
 			}
 		};
 
@@ -283,6 +308,92 @@ namespace Net
 		{
 			return TBaseIterator(Elements.end());
 		}
+	};
+
+	template<typename KeyType, typename ValueType>
+	class TPair
+	{
+	public:
+		KeyType First;
+		ValueType Second;
+
+		FORCEINLINE KeyType& Key()
+		{
+			return First;
+		}
+		FORCEINLINE const KeyType& Key() const
+		{
+			return First;
+		}
+		FORCEINLINE ValueType& Value()
+		{
+			return Second;
+		}
+		FORCEINLINE const ValueType& Value() const
+		{
+			return Second;
+		}
+	};
+
+	template<typename KeyType, typename ValueType>
+	class TMap
+	{
+		typedef TPair<KeyType, ValueType> ElementType;
+
+		ElementType Pairs;
+
+		class FBaseIterator
+		{
+			TMap<KeyType, ValueType>& ItMap;
+			TSet<ElementType>::FBaseIterator SetIt;
+
+			FBaseIterator(TMap<KeyType, ValueType>& Map)
+				: ItMap(Map)
+			{
+			}
+			FORCEINLINE ElementType& operator*()
+			{
+
+			}
+			FORCEINLINE const ElementType& operator*() const
+			{
+				return *SetIt;
+			}
+			FORCEINLINE bool operator==(const FBaseIterator& Other) const
+			{
+				return SetIt == Other.SetIt;
+			}
+			FORCEINLINE bool operator!=(const FBaseIterator& Other) const
+			{
+				return SetIt != Other.SetIt;
+			}
+		};
+
+		template<typename ComparisonFunction>
+		FORCEINLINE ValueType& operator[](const KeyType& Key, ComparisonFunction* comp = nullptr)
+		{
+			if (comp)
+			{
+				for (ElementType Pair : *this)
+				{
+					if (comp(Pair.First, Key))
+					{
+						return Pair.Second;
+					}
+				}
+			}
+			else
+			{
+				for (ElementType Pair : *this)
+				{
+					if (Pair.Key == Key)
+					{
+						return Pair.Second;
+					}
+				}
+			}			
+		}
+
 	};
 	
 	template<class ObjectType>
@@ -313,83 +424,6 @@ namespace Net
 		FString						PathName;
 
 		FName						StreamingLevelName;
-	};
-
-	struct FActorPriority
-	{
-		int32 Priority;		// Update priority, higher = more important.
-
-		FNetworkObjectInfo* ActorInfo;	// Actor info.
-		UObject* Channel;				// Actor channel.
-
-		FActorDestructionInfo* DestructionInfo;	// Destroy an actor
-
-		FActorPriority(UObject* InConnection, UObject* InChannel, FNetworkObjectInfo* InActorInfo, const TArray<struct FNetViewer>& Viewers, bool bLowBandwidth)
-			: ActorInfo(InActorInfo), Channel(InChannel), DestructionInfo(NULL)
-		{
-			float Time = Channel ? (InConnection->Child(_("Driver"))->Child<float>(_("Time")) - Channel->LastUpdateTime) : InConnection->Driver->SpawnPrioritySeconds;
-			// take the highest priority of the viewers on this connection
-			Priority = 0;
-			for (int32 i = 0; i < Viewers.Num(); i++)
-			{
-				Priority = FMath::Max<int32>(Priority, FMath::RoundToInt(65536.0f * ActorInfo->Actor->GetNetPriority(Viewers[i].ViewLocation, Viewers[i].ViewDir, Viewers[i].InViewer, Viewers[i].ViewTarget, InChannel, Time, bLowBandwidth)));
-			}
-		}
-
-		FActorPriority(class UObject* InConnection, struct FActorDestructionInfo* Info, const TArray<struct FNetViewer>& Viewers)
-			: ActorInfo(NULL), Channel(NULL), DestructionInfo(Info)
-		{
-
-			Priority = 0;
-
-			for (int32 i = 0; i < Viewers.Num(); i++)
-			{
-				float Time = InConnection->Child(_("Driver"))->Child<float>(_("SpawnPrioritySeconds"));
-
-				FVector Dir = DestructionInfo->DestroyedPosition - Viewers[i].ViewLocation;
-				float DistSq = Dir.SizeSquared();
-
-				// adjust priority based on distance and whether actor is in front of viewer
-				if ((Viewers[i].ViewDir | Dir) < 0.f)
-				{
-					if (DistSq > (2000.f* 2000.f))
-						Time *= 0.2f;
-					else if (DistSq > (500.0f*500.0f))
-						Time *= 0.4f;
-				}
-				else if (DistSq > (3162.0f* 3162.0f))
-					Time *= 0.4f;
-
-				Priority = Priority >= (65536.0f * Time) ? Priority : (65536.0f * Time);
-			}
-		}
-	};
-
-	
-
-	struct FNetworkObjectInfo
-	{
-		UObject* Actor;
-		uint8_t bDirtyForReplay : 1;
-		uint8_t bPendingNetUpdate : 1;
-		uint8_t bSwapRolesOnReplicate;
-		uint32_t ForceRelevantFrame;
-		double LastNetReplicateTime;
-		float LastNetUpdateTime;
-		double NextUpdateTime;
-		float OptimalNetUpdateDelta;
-
-		FNetworkObjectInfo(UObject* InActor)
-		{
-			this->Actor = InActor;
-			this->NextUpdateTime = 0.0;
-			this->LastNetReplicateTime = 0.0;
-			this->OptimalNetUpdateDelta = 0.0f;
-			this->LastNetUpdateTime = 0.0f;
-			this->bPendingNetUpdate = false;
-			this->bDirtyForReplay = false;
-			this->bSwapRolesOnReplicate = false;
-		}
 	};
 
 	struct FNetViewer
@@ -424,7 +458,124 @@ namespace Net
 		}
 	};
 
-	enum class ENetRole
+	struct FNetworkObjectInfo
+	{
+		UObject* Actor;
+		uint8_t bDirtyForReplay : 1;
+		uint8_t bPendingNetUpdate : 1;
+		uint8_t bSwapRolesOnReplicate;
+		uint32_t ForceRelevantFrame;
+		double LastNetReplicateTime;
+		float LastNetUpdateTime;
+		double NextUpdateTime;
+		float OptimalNetUpdateDelta;
+
+		FNetworkObjectInfo(UObject* InActor)
+		{
+			this->Actor = InActor;
+			this->NextUpdateTime = 0.0;
+			this->LastNetReplicateTime = 0.0;
+			this->OptimalNetUpdateDelta = 0.0f;
+			this->LastNetUpdateTime = 0.0f;
+			this->bPendingNetUpdate = false;
+			this->bDirtyForReplay = false;
+			this->bSwapRolesOnReplicate = false;
+		}
+	};
+
+	struct FActorPriority
+	{
+		int32 Priority;		// Update priority, higher = more important.
+
+		FNetworkObjectInfo* ActorInfo;	// Actor info.
+		UObject* Channel;				// Actor channel.
+
+		FActorDestructionInfo* DestructionInfo;	// Destroy an actor
+
+		FActorPriority() 
+			: Priority(0), ActorInfo(NULL), Channel(NULL), DestructionInfo(NULL)
+		{
+		}
+
+		FActorPriority(UObject* InConnection, UObject* InChannel, FNetworkObjectInfo* InActorInfo, const TArray<struct FNetViewer>& Viewers, bool bLowBandwidth)
+			: ActorInfo(InActorInfo), Channel(InChannel), DestructionInfo(NULL)
+		{
+			float Time = Channel ? (InConnection->Child(_("Driver"))->Child<float>(_("Time")) - Channel->LastUpdateTime) : InConnection->Child(_("Driver"))->Child<float>(_("SpawnPrioritySeconds"));
+			// take the highest priority of the viewers on this connection
+			Priority = 0;
+			//for (int32 i = 0; i < Viewers.Num(); i++)
+			static auto RoundToInt = [](float F) { return _mm_cvt_ss2si(_mm_set_ss(F + F + 0.5f)) >> 1; };
+
+			for (auto Viewer : Viewers)
+			{
+				Priority =MAX(Priority, RoundToInt(65536.0f * Globals::ActorGetNetPriority(ActorInfo->Actor, Viewer.ViewLocation, Viewer.ViewDir, Viewer.InViewer, Viewer.ViewTarget, InChannel, Time, bLowBandwidth)));
+			}
+		}
+
+		FActorPriority(class UObject* InConnection, struct FActorDestructionInfo* Info, const TArray<struct FNetViewer>& Viewers)
+			: ActorInfo(NULL), Channel(NULL), DestructionInfo(Info)
+		{
+
+			Priority = 0;
+
+			for (int32 i = 0; i < Viewers.Num(); i++)
+			{
+				float Time = InConnection->Child(_("Driver"))->Child<float>(_("SpawnPrioritySeconds"));
+
+				FVector Dir = DestructionInfo->DestroyedPosition - Viewers[i].ViewLocation;
+				float DistSq = Dir.SizeSquared();
+
+				// adjust priority based on distance and whether actor is in front of viewer
+				if ((Viewers[i].ViewDir | Dir) < 0.f)
+				{
+					if (DistSq > (2000.f* 2000.f))
+						Time *= 0.2f;
+					else if (DistSq > (500.0f*500.0f))
+						Time *= 0.4f;
+				}
+				else if (DistSq > (3162.0f* 3162.0f))
+					Time *= 0.4f;
+
+				Priority = MAX(Priority, 65536.0f * Time);
+			}
+		}
+	};
+
+
+
+	/** Structure to hold and pass around transient flags used during replication. */
+	struct FReplicationFlags
+	{
+		union
+		{
+			struct
+			{
+				/** True if replicating actor is owned by the player controller on the target machine. */
+				uint32 bNetOwner : 1;
+				/** True if this is the initial network update for the replicating actor. */
+				uint32 bNetInitial : 1;
+				/** True if this is actor is RemoteRole simulated. */
+				uint32 bNetSimulated : 1;
+				/** True if this is actor's ReplicatedMovement.bRepPhysics flag is true. */
+				uint32 bRepPhysics : 1;
+				/** True if this actor is replicating on a replay connection. */
+				uint32 bReplay : 1;
+				/** True if this actor's RPCs should be ignored. */
+				uint32 bIgnoreRPCs : 1;
+			};
+
+			uint32	Value;
+		};
+		FReplicationFlags()
+		{
+			Value = 0;
+		}
+	};
+
+
+	static_assert(sizeof(FReplicationFlags) == 4, "FReplicationFlags has invalid size.");
+
+	enum class ENetRole : uint8
 	{
 		/** No role at all. */
 		ROLE_None,
@@ -450,6 +601,89 @@ namespace Net
 		DORM_Initial,
 
 		DORM_MAX
+	};
+
+
+	/**
+	* Utility class to capture time passed in seconds, adding delta time to passed
+	* in variable. Not useful for reentrant functions
+	*/
+	class FSimpleScopeSecondsCounter
+	{
+	public:
+		/** Ctor, capturing start time. */
+		FSimpleScopeSecondsCounter(double& InSeconds, bool bInEnabled = true)
+			: StartTime(FPlatformTime::Seconds())
+			, Seconds(InSeconds)
+			, bEnabled(bInEnabled)
+			, RecursionDepth(nullptr)
+		{}
+		/** Ctor, capturing start time. */
+		FSimpleScopeSecondsCounter(double& InSeconds, int32* InRecursionDepth)
+			: StartTime(FPlatformTime::Seconds())
+			, Seconds(InSeconds)
+			, bEnabled(*InRecursionDepth == 0)
+			, RecursionDepth(InRecursionDepth)
+		{
+			(*RecursionDepth)++;
+		}
+		/** Dtor, updating seconds with time delta. */
+		~FSimpleScopeSecondsCounter()
+		{
+			if (bEnabled)
+			{
+				Seconds += FPlatformTime::Seconds() - StartTime;
+			}
+
+			if (RecursionDepth)
+			{
+				(*RecursionDepth)--;
+			}
+		}
+	private:
+		/** Start time, captured in ctor. */
+		double StartTime;
+		/** Time variable to update. */
+		double& Seconds;
+		/** Is the timer enabled or disabled */
+		bool bEnabled;
+		/** Recursion depth */
+		int32* RecursionDepth;
+	};
+
+	// Helper class to downgrade a non owner of an actor to simulated while replicating
+	class FScopedRoleDowngrade
+	{
+	public:
+		FScopedRoleDowngrade(UObject* InActor, const FReplicationFlags RepFlags) : Actor(InActor), ActualRemoteRole(Actor->Child<ENetRole>(_("RemoteRole")))
+		{
+			// If this is actor is autonomous, and this connection doesn't own it, we'll downgrade to simulated during the scope of replication
+			if (ActualRemoteRole == ENetRole::ROLE_AutonomousProxy)
+			{
+				if (!RepFlags.bNetOwner)
+				{
+					Actor->SetAutonomousProxy(false, false);
+				}
+			}
+		}
+
+		~FScopedRoleDowngrade()
+		{
+			// Upgrade role back to autonomous proxy if needed
+			if (Actor->Child<ENetRole>(_("RemoteRole")) != ActualRemoteRole)
+			{
+				Actor->SetReplicates(ActualRemoteRole != ENetRole::ROLE_None);
+
+				if (ActualRemoteRole == ENetRole::ROLE_AutonomousProxy)
+				{
+					Actor->SetAutonomousProxy(true, false);
+				}
+			}
+		}
+
+	private:
+		UObject* Actor;
+		const ENetRole	ActualRemoteRole;
 	};
 
 }

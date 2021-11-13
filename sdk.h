@@ -12,10 +12,11 @@ using namespace std;
 
 //COREUOBJECT classes
 
-template<class T>
+template<class ElementType>
 class TArray
 {
 	friend struct FString;
+
 
 public:
 	inline int Num() const
@@ -23,19 +24,19 @@ public:
 		return count;
 	};
 
-	void Add(T InputData)
+	void Add(ElementType InputData)
 	{
-		data = (T*)Realloc(data, sizeof(T) * (count + 1), 0);
+		data = (ElementType*)Realloc(data, sizeof(ElementType) * (count + 1), 0);
 		data[count++] = InputData;
 		max = count;
 	};
 
-	inline T& operator[](int i)
+	inline ElementType& operator[](int i)
 	{
 		return data[i];
 	};
 
-	inline const T& operator[](int i) const
+	inline const ElementType& operator[](int i) const
 	{
 		return data[i];
 	};
@@ -45,28 +46,65 @@ public:
 		return count - 1;
 	}
 
-	inline T* begin()
+	class FBaseArrayIterator
 	{
-		return(T*)(count, data);
+		int32 Index;
+		TArray<ElementType>& ItArray;
+
+	public:
+		FBaseArrayIterator(TArray<ElementType>& Array)
+			: ItArray(Array), Index(Array.max)
+		{
+		}
+		FBaseArrayIterator(TArray<ElementType>& Array, int32 CurrentIndex)
+			: ItArray(Array), Index(CurrentIndex)
+		{
+		}
+
+		FORCEINLINE ElementType& operator*()
+		{
+			return ItArray[Index];
+		}
+		FORCEINLINE ElementType& operator->()
+		{
+			return ItArray[Index];
+		}
+		FORCEINLINE FBaseArrayIterator& operator++()
+		{
+			++Index;
+			return *this;
+		}
+		FORCEINLINE bool operator==(const FBaseArrayIterator& other) const
+		{
+			return Index == other.Index;
+		}
+		FORCEINLINE bool operator!=(const FBaseArrayIterator& other) const
+		{
+			return Index != other.Index;
+		}
+	};
+
+	inline FBaseArrayIterator begin()
+	{
+		return FBaseArrayIterator(*this, 0);
 	}
-	inline T* begin() const
+	inline FBaseArrayIterator begin() const
 	{
-		return(T*)(count, data);
+		return FBaseArrayIterator(*this, 0);
+	}
+	inline FBaseArrayIterator end()
+	{
+		return FBaseArrayIterator(*this);
+	}
+	inline FBaseArrayIterator end() const
+	{
+		return FBaseArrayIterator(*this);
 	}
 
-	inline T* end()
-	{
-		return(T*)(count, data + count);
-	}
-	inline T* end() const
-	{
-		return(T*)(count, data + count);
-	}
-
-	T* data;
+private:
+	ElementType* data;
 	int32_t count;
 	int32_t max;
-private:
 };
 
 struct FString : private TArray<wchar_t>
