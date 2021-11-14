@@ -38,6 +38,7 @@ inline class UObject* WorldSettings;
 inline vector<class UObject*> CharacterPartsArray;
 inline bool bLoadedInMatch = false;
 inline bool bDroppedFromAircraft = false;
+inline bool bPressedPlay = false;
 
 namespace offsets
 {

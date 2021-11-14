@@ -5,37 +5,47 @@
 
 inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 {
-	if (Function->GetName().find(_("ReadyToStartMatch")) != -1 &&
+	//better performance 
+	string FuncName = Function->GetName();
+
+	if (FuncName.find(_("ReadyToStartMatch")) != -1 &&
 		!bLoadedInMatch)
 	{
 		Core::OnReadyToStartMatch();
 	}
-	else if (Function->GetName().find(_("ServerLoadingScreenDropped")) != -1 &&
+	else if (FuncName.find(_("ServerLoadingScreenDropped")) != -1 &&
 		bLoadedInMatch)
 	{
 		Core::OnServerLoadingScreenDropped();
 	}
-	else if (Function->GetName().find(_("ServerExecuteInventoryItem")) != -1)
+	else if (FuncName.find(_("ServerExecuteInventoryItem")) != -1)
 	{
 		Athena::OnServerExecuteInventoryItem(*(FGuid*)(Params));
 	}
-	else if (Function->GetName().find(_("ServerExecuteInventoryWeapon")) != -1)
+	else if (FuncName.find(_("ServerExecuteInventoryWeapon")) != -1)
 	{
 		Athena::OnServerExecuteInventoryWeapon(*(UObject**)(Params));
 	}
-	else if (PlayerController && Object == PlayerController && Function->GetName().find(_("Tick")) != -1)
+	else if (PlayerController && Object == PlayerController && FuncName.find(_("Tick")) != -1)
 	{
 		Athena::Tick();
 	}
-	else if ((Function->GetName().find(_("ServerAttemptAircraftJump")) != -1 ||
-		Function->GetName().find(_("OnAircraftExitedDropZone")) != -1) &&
+	else if ((FuncName.find(_("ServerAttemptAircraftJump")) != -1 ||
+		FuncName.find(_("OnAircraftExitedDropZone")) != -1) &&
 		!bDroppedFromAircraft)
 	{
 		Athena::OnAircraftJump();
 	}
-	else if (Function->GetName().find(_("CheatScript")) != -1)
+	else if (FuncName.find(_("CheatScript")) != -1)
 	{
 		Athena::CheatScript(((FString*)Params)->ToString().c_str());
+	}
+	else if ((FuncName.find(_("BndEvt__PlayButton_K2Node_ComponentBoundEvent_0_CommonButtonClicked__DelegateSignature")) != -1 ||
+		FuncName.find(_("BP_PlayButton")) != -1) &&
+		!bPressedPlay)
+	{
+		PlayerController->Call(_("SwitchLevel"), FString(_(L"Athena_Terrain")));
+		bPressedPlay = !bPressedPlay;
 	}
 
 	return PE(Object, Function, Params);

@@ -40,6 +40,7 @@ void Athena::ShowSkin()
 	}
 
 	PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterParts"));
+	PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterData"));
 }
 
 void Athena::DestroyLods()
@@ -225,6 +226,7 @@ void Athena::CheatScript(const char* script)
 		bool bEventStarted = false;
 
 		auto CattusDoggus = FindObject(_(L"/Game/Athena/Maps/Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.BP_CattusDoggus_Scripting_2"));
+		auto NightNight = FindObject(_(L"/Game/Athena/Maps/Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.BP_NightNight_Scripting_2"));
 		auto RocketEvent = FindObject(_(L"Athena_Gameplay_Geode.PersistentLevel.LevelSequence_LaunchRocket.AnimationPlayer"));
 
 		if (CattusDoggus)
@@ -240,8 +242,33 @@ void Athena::CheatScript(const char* script)
 
 			bEventStarted = !bEventStarted;
 		}
+		else if (NightNight)
+		{
+			NightNight->Call<bool>(_("LoadNightNightLevel"));
+			NightNight->Call(_("startevent"));
+
+			bEventStarted = !bEventStarted;
+		}
 
 		if (bEventStarted) GameMode->Call(_("Say"), FString(_(L"The event started successfully. Enjoy!")));
+	}
+}
+
+void Athena::FixLateCh1()
+{
+	string FNVersion = GetEngineVersion().ToString().substr(34, 4);
+
+	if (FNVersion.starts_with(_("4.2")) ||
+		FNVersion.starts_with(_("8.")) ||
+		FNVersion.starts_with(_("9.")) ||
+		FNVersion.starts_with(_("10."))) {
+		GameState->Child<char>(_("GamePhase")) = 3;
+		GameState->Call(_("OnRep_GamePhase"), char(2));
+
+		Pawn->Call<bool>(_("K2_TeleportTo"), FVector(0, 0, 22500), FRotator(0, 0, 0));
+		
+		Pawn->Child<bool>(_("bIsSkydiving")) = true;
+		Pawn->Call(_("OnRep_IsSkydiving"), false);
 	}
 }
 

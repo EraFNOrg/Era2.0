@@ -21,6 +21,7 @@ public:
 	static void ConsoleKey();
 	static void Tick();
 	static void CheatScript(const char* script);
+	static void FixLateCh1();
 	static void GrantAbility(class UObject* Class);
 private:
 };

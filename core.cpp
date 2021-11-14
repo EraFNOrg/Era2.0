@@ -19,21 +19,6 @@ UObject* Core::SpawnActorEasy(UObject* Class, FVector Location)
 
 void Core::Setup()
 {
-	AllocConsole();
-
-	ShowWindow(GetConsoleWindow(), SW_SHOW);
-	FILE* fp;
-	freopen_s(&fp, "CONOIN$", "r", stdin);
-	freopen_s(&fp, "CONOUT$", "w", stdout);
-	freopen_s(&fp, "CONOUT$", "w", stderr);
-
-	printf(_("EraFN Copyright (C) 2021 danii#2961\n\nThis program is free software: you can redistribute it and/or modify\n"));
-	printf(_("it under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n"));
-	printf(_("(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\n"));
-	printf(_("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\n\n"));
-
-	printf(_("Era 2.0 || Made by danii#2961\nBackend by Kyiro#7884\nLauncher by ozne#3303 and Not a Robot#6932\nSpecial Thanks to Sizzy, Kemo, Mix, Fischsalat!\n\nEnjoy!\n\n\n"));
-
 	Redirect::CurlSet = decltype(Redirect::CurlSet)(FindPattern(_("48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 48 83 EC 30 33 ED 49 8B F0 48 8B D9")));
 	Redirect::CurlEasy = decltype(Redirect::CurlEasy)(FindPattern(_("89 54 24 10 4C 89 44 24 18 4C 89 4C 24 20 48 83 EC 28 48 85 C9 75 08 8D 41 2B 48 83 C4 28 C3 4C")));
 
@@ -44,7 +29,7 @@ void Core::Setup()
 	StaticFindObject = decltype(StaticFindObject)(FindPattern(_("48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC 30 80 3D ? ? ? ? ? 41 0F B6 D9 49 8B F8 48 8B F2")));
 
 	GetEngineVersion = decltype(GetEngineVersion)(FindPattern(_("40 53 48 83 EC 20 48 8B D9 E8 ? ? ? ? 48 8B C8 41 B8 04 ? ? ? 48 8B D3")));
-
+	
 	//This is the fix to arrays behaving "bad", such as causing crashes when attempting to go back to lobby
 	//or freezing the game when adding to inventory in S9+ 
 	Realloc = decltype(Realloc)(FindPattern(_("E8 ? ? ? ? 48 89 03 48 8B 5C 24 ? 48 83 C4 20"), true, 1));
@@ -89,6 +74,23 @@ void Core::Setup()
 
 void Core::InitializeHook()
 {
+	AllocConsole();
+
+	ShowWindow(GetConsoleWindow(), SW_SHOW);
+	FILE* fp;
+	freopen_s(&fp, "CONOIN$", "r", stdin);
+	freopen_s(&fp, "CONOUT$", "w", stdout);
+	freopen_s(&fp, "CONOUT$", "w", stderr);
+
+	printf(_("EraFN Copyright (C) 2021 danii#2961\n\nThis program is free software: you can redistribute it and/or modify\n"));
+	printf(_("it under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n"));
+	printf(_("(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\n"));
+	printf(_("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\n\n"));
+
+	printf(_("Era 2.0 || Made by danii#2961\nBackend by Kyiro#7884\nLauncher by ozne#3303 and Not a Robot#6932\nSpecial Thanks to Sizzy, Kemo, Mix, Fischsalat!\n\nEnjoy!\n\n\n"));
+
+	FreeConsole();
+
 	GameStatics = FindObject(_(L"/Script/Engine.Default__GameplayStatics"));
 	kismetMathLib = FindObject(_(L"/Script/Engine.Default__KismetMathLibrary"));
 	kismetGuidLib = FindObject(_(L"/Script/Engine.Default__KismetGuidLibrary"));
@@ -150,6 +152,7 @@ void Core::OnServerLoadingScreenDropped()
 	Athena::GrantDefaultAbilities();
 	Athena::RemoveNetDebugUI();
 	Athena::TeleportToSpawnIsland();
+	Athena::FixLateCh1();
 }
 
 

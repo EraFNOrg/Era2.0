@@ -50,16 +50,16 @@ namespace Redirect
 
 				if (Url.find(_("/account/api/oauth/token")) != -1)
 				{
-					PGH::UnHook();
-					Hook(LPVOID(FindPattern(_("89 54 24 10 4C 89 44 24 18 4C 89 4C 24 20 48 83 EC 28 48 85 C9 75 08 8D 41 2B 48 83 C4 28 C3 4C"))), (LPVOID*)(CurlEasy), CurlEasyHook);
+					if (!GetEngineVersion().ToString().substr(34, 4).starts_with(_("10."))) {
+						PGH::UnHook();
+						Hook(LPVOID(FindPattern(_("89 54 24 10 4C 89 44 24 18 4C 89 4C 24 20 48 83 EC 28 48 85 C9 75 08 8D 41 2B 48 83 C4 28 C3 4C"))), (LPVOID*)(CurlEasy), CurlEasyHook);
+					}
 				}
 
 				if (Url.find(_("/client/ClientQuestLogin")) != -1) {
 					Core::InitializeHook();
 					Core::InitializeGlobals();
 				}
-
-				if (Url.find(_("matchmakingservice")) != -1) PlayerController->Call(_("SwitchLevel"), FString(_(L"Athena_Terrain")));
 			}
 
 			returnValue = CurlSetHook(A, B, Url.c_str());
