@@ -69,6 +69,16 @@ void Core::Setup()
 		offsets::StructSize = 0x50;
 		break;
 	}
+	case 424: {
+		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 55 56 57 48 8B EC 48 83 EC 30 8B 01 48 8B F1 44 8B 49 04 8B F8")));
+		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
+		offsets::Children = 0x48;
+		offsets::Next = 0x28;
+		offsets::ParamsSize = 0x9E;
+		offsets::ReturnValueOffset = 0xA0;
+		offsets::SuperClass = 0x40;
+		offsets::StructSize = 0x50;
+	}
 	}
 }
 
@@ -96,9 +106,16 @@ void Core::InitializeHook()
 	kismetGuidLib = FindObject(_(L"/Script/Engine.Default__KismetGuidLibrary"));
 	kismetStringLib = FindObject(_(L"/Script/Engine.Default__KismetStringLibrary"));
 
-	PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x40]);
-
-	Hook(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x40], (LPVOID*)(&PE), ProcessEvent);
+	//CH2 checks
+	if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11.")) ||
+		GetEngineVersion().ToString().substr(34, 4).starts_with(_("7.4"))) {
+		PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x41]);
+		Hook(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x41], (LPVOID*)(&PE), ProcessEvent);
+	}
+	else {
+		PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x40]);
+		Hook(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x40], (LPVOID*)(&PE), ProcessEvent);
+	}
 
 	GameViewportClient = GameStatics->Call<UObject*>(_("GetPlayerController"), FindObject(_(L"/Game/Maps/Frontend.Frontend")), 0)->Child(_("Player"))->Child(_("ViewportClient"));
 }
@@ -152,7 +169,7 @@ void Core::OnServerLoadingScreenDropped()
 	Athena::GrantDefaultAbilities();
 	Athena::RemoveNetDebugUI();
 	Athena::TeleportToSpawnIsland();
-	Athena::FixLateCh1();
+	Athena::Fixbus();
 }
 
 

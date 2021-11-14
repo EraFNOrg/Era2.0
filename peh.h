@@ -44,8 +44,16 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 		FuncName.find(_("BP_PlayButton")) != -1) &&
 		!bPressedPlay)
 	{
-		PlayerController->Call(_("SwitchLevel"), FString(_(L"Athena_Terrain")));
-		bPressedPlay = !bPressedPlay;
+		//Season check
+		if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11."))) {
+			PlayerController->Call(_("SwitchLevel"), FString(_(L"Apollo_Terrain")));
+			bPressedPlay = !bPressedPlay;
+		}
+		else
+		{
+			PlayerController->Call(_("SwitchLevel"), FString(_(L"Athena_Terrain")));
+			bPressedPlay = !bPressedPlay;
+		}
 	}
 
 	return PE(Object, Function, Params);

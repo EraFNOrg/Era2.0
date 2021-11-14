@@ -12,11 +12,6 @@ void Athena::SpawnPawn()
 
 void Athena::ShowSkin()
 {
-	static auto BodyClass = FindObject(_(L"/Script/FortniteGame.CustomCharacterBodyPartData"));
-	static auto HeadClass = FindObject(_(L"/Script/FortniteGame.CustomCharacterHeadData"));
-	static auto HatData = FindObject(_(L"/Script/FortniteGame.CustomCharacterHatData"));
-	static auto BackpackData = FindObject(_(L"/Script/FortniteGame.CustomCharacterBackpackData"));
-
 	static UObject* Hero = nullptr;
 
 	if (auto TempHero = &PlayerController->Child(_("MyPlayerInfo"))->Child(_("AthenaMenuHeroDef")); !IsBadReadPtr(TempHero)) Hero = *TempHero;
@@ -28,16 +23,8 @@ void Athena::ShowSkin()
 		for (UObject* CurrentCharacterPart : CharacterParts) CharacterPartsArray.push_back(CurrentCharacterPart);
 
 	for (UObject* CurrentCharacterPart : CharacterPartsArray)
-	{
-		if (CurrentCharacterPart->Child(_("AdditionalData"))->IsA(BodyClass))
-			Pawn->Call(_("ServerChoosePart"), char(1), CurrentCharacterPart);
-		else if (CurrentCharacterPart->Child(_("AdditionalData"))->IsA(HeadClass))
-			Pawn->Call(_("ServerChoosePart"), char(0), CurrentCharacterPart);
-		else if (CurrentCharacterPart->Child(_("AdditionalData"))->IsA(HatData))
-			Pawn->Call(_("ServerChoosePart"), char(2), CurrentCharacterPart);
-		else if (CurrentCharacterPart->Child(_("AdditionalData"))->IsA(BackpackData))
-			Pawn->Call(_("ServerChoosePart"), char(3), CurrentCharacterPart);
-	}
+		Pawn->Call(_("ServerChoosePart"), CurrentCharacterPart->Child<char>(_("CharacterPartType")), CurrentCharacterPart);
+
 
 	PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterParts"));
 	PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterData"));
@@ -70,7 +57,7 @@ void Athena::DropLoadingScreen()
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("FullMapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush")).ObjectResource;
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
-	if (auto MAP = &(GameState->Child<UObject*>(_("MinimapMaterial"))); !IsBadReadPtr(MAP)) (*MAP) = FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena"));
+	if (auto MAP = &(GameState->Child<UObject*>(_("MinimapMaterial"))); !IsBadReadPtr(MAP)) (*MAP) = FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena")) ? FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena")) : FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo"));
 
 	//Playlist
 	auto PlayList = FindObject(_(L"/Game/Athena/Playlists/Playground/Playlist_Playground.Playlist_Playground"));
@@ -199,9 +186,9 @@ void Athena::ConsoleKey()
 {
 	auto F2Key = FKey();
 
-	F2Key.KeyName = kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"F2")));
+	F2Key.KeyName = kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"F6")));
 
-	FindObject(_(L"/Script/Engine.Default__InputSettings"))->Child<TArray<FKey>>(_("ConsoleKeys"))[0] = F2Key;
+	FindObject(_(L"/Script/Engine.Default__InputSettings"))->Child<TArray<FKey>>(_("ConsoleKeys"))[1] = F2Key;
 }
 
 void Athena::Tick()
@@ -254,14 +241,15 @@ void Athena::CheatScript(const char* script)
 	}
 }
 
-void Athena::FixLateCh1()
+void Athena::Fixbus()
 {
 	string FNVersion = GetEngineVersion().ToString().substr(34, 4);
 
 	if (FNVersion.starts_with(_("4.2")) ||
 		FNVersion.starts_with(_("8.")) ||
 		FNVersion.starts_with(_("9.")) ||
-		FNVersion.starts_with(_("10."))) {
+		FNVersion.starts_with(_("10.")) ||
+		FNVersion.starts_with(_("11."))) {
 		GameState->Child<char>(_("GamePhase")) = 3;
 		GameState->Call(_("OnRep_GamePhase"), char(2));
 
