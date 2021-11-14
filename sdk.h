@@ -23,12 +23,21 @@ public:
 	{
 		return count;
 	};
-
-	void Add(ElementType InputData)
+	inline int Slack() const
 	{
-		data = (ElementType*)Realloc(data, sizeof(ElementType) * (count + 1), 0);
-		data[count++] = InputData;
-		max = count;
+		return max - count;
+	}
+	inline void Reserve(const int NumElements)
+	{
+		data = Slack() >= NumElements ? data : Realloc(data, (max = count + NumElements) * sizeof(ElementType), 0);
+	}
+	void Add(ElementType InputData...)
+	{
+		int num = sizeof...(InputData) / sizeof(ElementType);
+
+		Reserve(num);
+		data[count] = InputData;
+		count += num;
 	};
 
 	inline ElementType& operator[](int i)

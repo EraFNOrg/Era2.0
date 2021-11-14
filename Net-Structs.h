@@ -353,7 +353,7 @@ namespace Net
 			}
 			FORCEINLINE ElementType& operator*()
 			{
-
+				return *SetIt;
 			}
 			FORCEINLINE const ElementType& operator*() const
 			{
@@ -371,6 +371,17 @@ namespace Net
 
 		template<typename ComparisonFunction>
 		FORCEINLINE ValueType& operator[](const KeyType& Key, ComparisonFunction* comp = nullptr)
+		{
+			return this->GetByKey(Key, comp);
+		}
+		template<typename ComparisonFunction>
+		FORCEINLINE const ValueType& operator[](const KeyType& Key, ComparisonFunction* comp = nullptr) const
+		{
+			return this->GetByKey(Key, comp);
+		}
+
+		template<typename ComparisonFunction>
+		FORCEINLINE ValueType& GetByKey(const KeyType& Key, ComparisonFunction* comp = nullptr)
 		{
 			if (comp)
 			{
@@ -391,7 +402,7 @@ namespace Net
 						return Pair.Second;
 					}
 				}
-			}			
+			}
 		}
 
 	};

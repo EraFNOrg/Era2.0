@@ -100,7 +100,7 @@ namespace Net
 		{
 			auto ActorInfo = ObjectInfo.Object;
 
-			auto WorldTimeSeconds = GameStatics->Call<float>(_("GetTimeSeconds"));
+			auto WorldTimeSeconds = WORLDTIME;
 
 			if (!ActorInfo->bPendingNetUpdate && WorldTimeSeconds <= ActorInfo->NextUpdateTime)
 			{
@@ -163,12 +163,7 @@ namespace Net
 				const float MinOptimalDelta = 1.0f / ActorNetUpdateFrequency;
 				const float MaxOptimalDelta = ActorMinNetUpdateFrequency >= MinOptimalDelta ? ActorMinNetUpdateFrequency : MinOptimalDelta;
 
-				auto clamp = [](float X, float Min, float Max)
-				{
-					return X >= Min ? Min : X >= Max ? X : Max;
-				};
-
-				const float Alpha = clamp((LastReplicateDelta - ScaleDownStartTime) / ScaleDownTimeRange, 0.0f, 1.0f);
+				const float Alpha = Utils::Clamp((LastReplicateDelta - ScaleDownStartTime) / ScaleDownTimeRange, 0.0f, 1.0f);
 
 				ActorInfo->OptimalNetUpdateDelta = std::lerp(MinOptimalDelta, MaxOptimalDelta, Alpha);
 			}
@@ -315,257 +310,6 @@ namespace Net
 		}
 	}
 
-	int64 ReplicateActor(UObject* ActorChannel)
-	{
-
-		const UObject* const ActorWorld = ActorChannel->Child(_("Actor"))->GetWorld();
-
-		const bool bReplay = ActorWorld && (ActorWorld->DemoNetDriver == ActorChannel->Child(_("Connection"))->Child(_("Driver")));
-
-		FSimpleScopeSecondsCounter ScopedSecondsCounter(Globals::GReplicateActorTimeSeconds, !bReplay);
-		if (!bReplay)
-		{
-			Globals::GNumReplicateActorCalls++;
-		}
-
-		if (bPausedUntilReliableACK)
-		{
-			if (NumOutRec > 0)
-			{
-				return 0;
-			}
-			bPausedUntilReliableACK = 0;
-		}
-
-		const TArray<FNetViewer>& NetViewers = ActorWorld->GetWorldSettings()->ReplicationViewers;
-		bool bIsNewlyReplicationPaused = false;
-		bool bIsNewlyReplicationUnpaused = false;
-
-		if (OpenPacketId.First != -1 && NetViewers.Num() > 0)
-		{
-			bool bNewPaused = true;
-
-			for (const FNetViewer& NetViewer : NetViewers)
-			{
-				if (!Actor->IsReplicationPausedForConnection(NetViewer))
-				{
-					bNewPaused = false;
-					break;
-				}
-			}
-
-			const bool bOldPaused = IsReplicationPaused();
-
-			// We were paused and still are, don't do anything.
-			if (bOldPaused && bNewPaused)
-			{
-				return 0;
-			}
-
-			bIsNewlyReplicationUnpaused = bOldPaused && !bNewPaused;
-			bIsNewlyReplicationPaused = !bOldPaused && bNewPaused;
-			SetReplicationPaused(bNewPaused);
-		}
-
-		bool WroteSomethingImportant = bIsNewlyReplicationUnpaused || bIsNewlyReplicationPaused;
-
-		// triggering replication of an Actor while already in the middle of replication can result in invalid data being sent and is therefore illegal
-		if (bIsReplicatingActor)
-		{
-			FString Error(FString::Printf(TEXT("Attempt to replicate '%s' while already replicating that Actor!"), *Actor->GetName()));
-			UE_LOG(LogNet, Log, TEXT("%s"), *Error);
-			ensureMsgf(false, TEXT("%s"), *Error);
-			return 0;
-		}
-
-		// Create an outgoing bunch, and skip this actor if the channel is saturated.
-		FOutBunch Bunch(this, 0);
-
-		if (Bunch.IsError())
-		{
-			return 0;
-		}
-
-		if (bIsNewlyReplicationPaused)
-		{
-			Bunch.bReliable = true;
-			Bunch.bIsReplicationPaused = true;
-
-		}
-
-		bIsReplicatingActor = true;
-		FReplicationFlags RepFlags;
-
-		// Send initial stuff.
-		if (OpenPacketId.First != INDEX_NONE && !Connection->bResendAllDataSinceOpen)
-		{
-			if (!SpawnAcked && OpenAcked)
-			{
-				// After receiving ack to the spawn, force refresh of all subsequent unreliable packets, which could
-				// have been lost due to ordering problems. Note: We could avoid this by doing it in FActorChannel::ReceivedAck,
-				// and avoid dirtying properties whose acks were received *after* the spawn-ack (tricky ordering issues though).
-				SpawnAcked = 1;
-				for (auto RepComp = ReplicationMap.CreateIterator(); RepComp; ++RepComp)
-				{
-					RepComp.Value()->ForceRefreshUnreliableProperties();
-				}
-			}
-		}
-		else
-		{
-			RepFlags.bNetInitial = true;
-			Bunch.bClose = Actor->bNetTemporary;
-			Bunch.bReliable = true; // Net temporary sends need to be reliable as well to force them to retry
-		}
-
-		// Owned by connection's player?
-		UObject* OwningConnection = Actor->GetNetConnection();
-		if (OwningConnection == Connection || (OwningConnection != NULL && OwningConnection->IsA(FindObject(_(L"Class Engine.ChildConnection"))) && OwningConnection->Child(_("Parent")) == ActorChannel->Child(_("Connection"))))
-		{
-			RepFlags.bNetOwner = true;
-		}
-		else
-		{
-			RepFlags.bNetOwner = false;
-		}
-
-		// ----------------------------------------------------------
-		// If initial, send init data.
-		// ----------------------------------------------------------
-
-		if (RepFlags.bNetInitial && OpenedLocally)
-		{
-			Connection->PackageMap->SerializeNewActor(Bunch, this, Actor);
-			WroteSomethingImportant = true;
-
-			Actor->OnSerializeNewActor(Bunch);
-		}
-
-		// Possibly downgrade role of actor if this connection doesn't own it
-		FScopedRoleDowngrade ScopedRoleDowngrade(Actor, RepFlags);
-
-		RepFlags.bNetSimulated = (Actor->GetRemoteRole() == ROLE_SimulatedProxy);
-		RepFlags.bRepPhysics = Actor->ReplicatedMovement.bRepPhysics;
-		RepFlags.bReplay = bReplay;
-		//RepFlags.bNetInitial	= RepFlags.bNetInitial;
-
-		UE_LOG(LogNetTraffic, Log, TEXT("Replicate %s, bNetInitial: %d, bNetOwner: %d"), *Actor->GetName(), RepFlags.bNetInitial, RepFlags.bNetOwner);
-
-		FMemMark	MemMark(FMemStack::Get());	// The calls to ReplicateProperties will allocate memory on FMemStack::Get(), and use it in ::PostSendBunch. we free it below
-
-		// ----------------------------------------------------------
-		// Replicate Actor and Component properties and RPCs
-		// ---------------------------------------------------
-
-		if (!bIsNewlyReplicationPaused)
-		{
-			// The Actor
-			WroteSomethingImportant |= ActorReplicator->ReplicateProperties(Bunch, RepFlags);
-
-			// The SubObjects
-			WroteSomethingImportant |= Actor->ReplicateSubobjects(this, &Bunch, &RepFlags);
-
-			if (Connection->bResendAllDataSinceOpen)
-			{
-				if (WroteSomethingImportant)
-				{
-					SendBunch(&Bunch, 1);
-				}
-
-				MemMark.Pop();
-
-				bIsReplicatingActor = false;
-
-				return WroteSomethingImportant;
-			}
-
-			// Look for deleted subobjects
-			for (auto RepComp = ReplicationMap.CreateIterator(); RepComp; ++RepComp)
-			{
-				if (!RepComp.Key().IsValid())
-				{
-					if (RepComp.Value()->ObjectNetGUID.IsValid())
-					{
-						// Write a deletion content header:
-						WriteContentBlockForSubObjectDelete(Bunch, RepComp.Value()->ObjectNetGUID);
-
-						WroteSomethingImportant = true;
-						Bunch.bReliable = true;
-					}
-					else
-					{
-						UE_LOG(LogNetTraffic, Error, TEXT("Unable to write subobject delete for (%s), object replicator has invalid NetGUID"), *GetPathNameSafe(Actor));
-					}
-
-					RepComp.Value()->CleanUp();
-					RepComp.RemoveCurrent();
-				}
-			}
-		}
-
-		// -----------------------------
-		// Send if necessary
-		// -----------------------------
-
-		int64 NumBitsWrote = 0;
-		if (WroteSomethingImportant)
-		{
-			FPacketIdRange PacketRange = SendBunch(&Bunch, 1);
-
-			if (!bIsNewlyReplicationPaused)
-			{
-				for (auto RepComp = ReplicationMap.CreateIterator(); RepComp; ++RepComp)
-				{
-					RepComp.Value()->PostSendBunch(PacketRange, Bunch.bReliable);
-				}
-
-				// If there were any subobject keys pending, add them to the NakMap
-				if (PendingObjKeys.Num() > 0)
-				{
-					// For the packet range we just sent over
-					for (int32 PacketId = PacketRange.First; PacketId <= PacketRange.Last; ++PacketId)
-					{
-						// Get the existing set (its possible we send multiple bunches back to back and they end up on the same packet)
-						FPacketRepKeyInfo& Info = SubobjectNakMap.FindOrAdd(PacketId % SubobjectRepKeyBufferSize);
-						if (Info.PacketID != PacketId)
-						{
-							UE_LOG(LogNetTraffic, Verbose, TEXT("ActorChannel[%d]: Clearing out PacketRepKeyInfo for new packet: %d"), ChIndex, PacketId);
-							Info.ObjKeys.Empty(Info.ObjKeys.Num());
-						}
-						Info.PacketID = PacketId;
-						Info.ObjKeys.Append(PendingObjKeys);
-
-						FString VerboseString;
-						for (auto KeyIt = PendingObjKeys.CreateIterator(); KeyIt; ++KeyIt)
-						{
-							VerboseString += FString::Printf(TEXT(" %d"), *KeyIt);
-						}
-
-					}
-				}
-
-				if (Actor->bNetTemporary)
-				{
-					ActorChannel->Child(_("Connection"))->Child<TArray<UObject*>(_("SentTemporaries")).Add(Actor);
-				}
-			}
-			NumBitsWrote = Bunch.GetNumBits();
-		}
-
-		PendingObjKeys.Empty();
-
-		// If we evaluated everything, mark LastUpdateTime, even if nothing changed.
-		LastUpdateTime = ActorChannel->Child(_("Connection"))->Child(_("Driver"))->Child(_("Time"));
-
-		MemMark.Pop();
-
-		bIsReplicatingActor = false;
-
-		bForceCompareProperties = false;		// Only do this once per frame when set
-
-
-		return NumBitsWrote;
-	}
 
 
 	int32 ServerReplicateActors_ProcessPrioritizedActors(UObject* Driver, UObject* Connection, const TArray<FNetViewer>& ConnectionViewers, FActorPriority** PriorityActors, const int32 FinalSortedCount, int32& OutUpdated)
@@ -656,7 +400,7 @@ namespace Net
 						if (bLevelInitializedForActor)
 						{
 							// Create a new channel for this actor.
-							Channel = (UActorChannel*)Connection->CreateChannel(CHTYPE_Actor, 1);
+							Channel = Connection->CreateChannel(CHTYPE_Actor, 1);
 							if (Channel)
 							{
 								Channel->SetChannelActor(Actor);
@@ -665,8 +409,7 @@ namespace Net
 						// if we couldn't replicate it for a reason that should be temporary, and this Actor is updated very infrequently, make sure we update it again soon
 						else if (Actor->NetUpdateFrequency < 1.0f)
 						{
-							UE_LOG(LogNetTraffic, Log, TEXT("Unable to replicate %s"), *Actor->GetName());
-							ActorInfo->NextUpdateTime = World->TimeSeconds + 0.2f * FMath::FRand();
+							ActorInfo->NextUpdateTime = WORLDTIME + 0.2f * rand();
 						}
 					}
 
@@ -675,13 +418,12 @@ namespace Net
 						// if it is relevant then mark the channel as relevant for a short amount of time
 						if (bIsRelevant)
 						{
-							Channel->RelevantTime = Time + 0.5f * FMath::SRand();
+							Channel->RelevantTime = Driver->Child<float>(_("Time")) + 0.5f * rand();
 						}
 						// if the channel isn't saturated
 						if (Channel->IsNetReady(0))
 						{
 							// replicate the actor
-							UE_LOG(LogNetTraffic, Log, TEXT("- Replicate %s. %d"), *Actor->GetName(), PriorityActors[j]->Priority);
 							if (DebugRelevantActors)
 							{
 								LastRelevantActors.Add(Actor);
@@ -689,19 +431,8 @@ namespace Net
 
 							double ChannelLastNetUpdateTime = Channel->LastUpdateTime;
 
-							if (Channel->ReplicateActor())
+							if (Globals::ActorChannelReplicateActor(Channel))
 							{
-#if USE_SERVER_PERF_COUNTERS
-								if (const FNetworkObjectInfo* const ObjectInfo = Actor->FindNetworkObjectInfo())
-								{
-									// A channel time of 0.0 means this is the first time the actor is being replicated, so we don't need to record it
-									if (ChannelLastNetUpdateTime > 0.0)
-									{
-										Connection->GetActorsStarvedByClassTimeMap().FindOrAdd(Actor->GetClass()->GetName()).Add((World->RealTimeSeconds - ChannelLastNetUpdateTime) * 1000.0f);
-									}
-								}
-#endif
-
 								ActorUpdatesThisConnectionSent++;
 								if (DebugRelevantActors)
 								{
@@ -709,20 +440,19 @@ namespace Net
 								}
 
 								// Calculate min delta (max rate actor will upate), and max delta (slowest rate actor will update)
-								const float MinOptimalDelta = 1.0f / Actor->NetUpdateFrequency;
-								const float MaxOptimalDelta = FMath::Max(1.0f / Actor->MinNetUpdateFrequency, MinOptimalDelta);
-								const float DeltaBetweenReplications = (World->TimeSeconds - ActorInfo->LastNetReplicateTime);
+								const float MinOptimalDelta = 1.0f / Actor->Child<float>(_("NetUpdateFrequency"));
+								const float MaxOptimalDelta = Utils::Max(1.0f / Actor->Child<float>(_("MinNetUpdateFrequency")), MinOptimalDelta);
+								const float DeltaBetweenReplications = (WORLDTIME - ActorInfo->LastNetReplicateTime);
 
 								// Choose an optimal time, we choose 70% of the actual rate to allow frequency to go up if needed
-								ActorInfo->OptimalNetUpdateDelta = FMath::Clamp(DeltaBetweenReplications * 0.7f, MinOptimalDelta, MaxOptimalDelta);
-								ActorInfo->LastNetReplicateTime = World->TimeSeconds;
+								ActorInfo->OptimalNetUpdateDelta = Utils::Clamp(DeltaBetweenReplications * 0.7f, MinOptimalDelta, MaxOptimalDelta);
+								ActorInfo->LastNetReplicateTime = WORLDTIME;
 							}
 							ActorUpdatesThisConnection++;
 							OutUpdated++;
 						}
 						else
 						{
-							UE_LOG(LogNetTraffic, Log, TEXT("- Channel saturated, forcing pending update for %s"), *Actor->GetName());
 							// otherwise force this actor to be considered in the next tick again
 							Actor->ForceNetUpdate();
 						}
@@ -745,7 +475,6 @@ namespace Net
 					// Fixme: this should be a setting
 					if (!bLevelInitializedForActor || !Actor->IsNetStartupActor())
 					{
-						UE_LOG(LogNetTraffic, Log, TEXT("- Closing channel for no longer relevant actor %s"), *Actor->GetName());
 						Channel->Close();
 					}
 				}
@@ -754,6 +483,212 @@ namespace Net
 
 		return FinalSortedCount;
 	}
+
+
+	int32 ServerReplicateActors(UObject* Driver, float DeltaSeconds)
+	{
+
+		TArray<UObject*>& ClientConnections = Driver->Child<TArray<UObject*>>(_("ClientConnections"));
+
+
+		if (ClientConnections.Num() == 0)
+		{
+			return 0;
+		}
+
+		if (Driver->Child(_("ReplicationDriver")))
+		{
+			return ServerReplicateActors(Driver->Child(_("ReplicationDriver")), DeltaSeconds);
+		}
+
+
+		// Bump the ReplicationFrame value to invalidate any properties marked as "unchanged" for this frame.
+		ReplicationFrame++;
+
+		int32 Updated = 0;
+
+		const int32 NumClientsToTick = ServerReplicateActors_PrepConnections(Driver, DeltaSeconds);
+
+		if (NumClientsToTick == 0)
+		{
+			// No connections are ready this frame
+			return 0;
+		}
+
+
+		UObject* WorldSettings = nullptr; World->GetWorldSettings(); // ULevel->WorldSettings
+
+		if (Driver->Child(_("World"))->Child(_("PersistentLevel")))
+		{
+			WorldSettings = Driver->Child(_("World"))->Child(_("PersistentLevel"))->Child(_("WorldSettings"));
+		}
+
+		bool bCPUSaturated = false;
+		float ServerTickTime = GEngine->GetMaxTickRate(DeltaSeconds);
+		if (ServerTickTime == 0.f)
+		{
+			ServerTickTime = DeltaSeconds;
+		}
+		else
+		{
+			ServerTickTime = 1.f / ServerTickTime;
+			bCPUSaturated = DeltaSeconds > 1.2f * ServerTickTime;
+		}
+
+		TArray<FNetworkObjectInfo*> ConsiderList;
+		ConsiderList.Reserve(GetNetworkObjectList().GetActiveObjects().Num());
+
+		// Build the consider list (actors that are ready to replicate)
+		ServerReplicateActors_BuildConsiderList(ConsiderList, ServerTickTime);
+
+		FMemMark Mark(FMemStack::Get());
+
+		for (int32 i = 0; i < ClientConnections.Num(); i++)
+		{
+			UObject* Connection = ClientConnections[i];
+
+			// net.DormancyValidate can be set to 2 to validate all dormant actors against last known state before going dormant
+			if (CVarNetDormancyValidate.GetValueOnAnyThread() == 2)
+			{
+				for (auto It = Connection->DormantReplicatorMap.CreateIterator(); It; ++It)
+				{
+					FObjectReplicator& Replicator = It.Value().Get();
+
+					if (Replicator.OwningChannel != nullptr)
+					{
+						Replicator.ValidateAgainstState(Replicator.OwningChannel->GetActor());
+					}
+				}
+			}
+
+			// if this client shouldn't be ticked this frame
+			if (i >= NumClientsToTick)
+			{
+				//UE_LOG(LogNet, Log, TEXT("skipping update to %s"),*Connection->GetName());
+				// then mark each considered actor as bPendingNetUpdate so that they will be considered again the next frame when the connection is actually ticked
+				for (int32 ConsiderIdx = 0; ConsiderIdx < ConsiderList.Num(); ConsiderIdx++)
+				{
+					AActor* Actor = ConsiderList[ConsiderIdx]->Actor;
+					// if the actor hasn't already been flagged by another connection,
+					if (Actor != NULL && !ConsiderList[ConsiderIdx]->bPendingNetUpdate)
+					{
+						// find the channel
+						UActorChannel* Channel = Connection->FindActorChannelRef(ConsiderList[ConsiderIdx]->WeakActor);
+						// and if the channel last update time doesn't match the last net update time for the actor
+						if (Channel != NULL && Channel->LastUpdateTime < ConsiderList[ConsiderIdx]->LastNetUpdateTime)
+						{
+							//UE_LOG(LogNet, Log, TEXT("flagging %s for a future update"),*Actor->GetName());
+							// flag it for a pending update
+							ConsiderList[ConsiderIdx]->bPendingNetUpdate = true;
+						}
+					}
+				}
+				// clear the time sensitive flag to avoid sending an extra packet to this connection
+				Connection->TimeSensitive = false;
+			}
+			else if (Connection->ViewTarget)
+			{
+				// Make a list of viewers this connection should consider (this connection and children of this connection)
+				TArray<FNetViewer>& ConnectionViewers = WorldSettings->ReplicationViewers;
+
+				ConnectionViewers.Reset();
+				new(ConnectionViewers)FNetViewer(Connection, DeltaSeconds);
+				for (int32 ViewerIndex = 0; ViewerIndex < Connection->Children.Num(); ViewerIndex++)
+				{
+					if (Connection->Children[ViewerIndex]->ViewTarget != NULL)
+					{
+						new(ConnectionViewers)FNetViewer(Connection->Children[ViewerIndex], DeltaSeconds);
+					}
+				}
+
+				// send ClientAdjustment if necessary
+				// we do this here so that we send a maximum of one per packet to that client; there is no value in stacking additional corrections
+				if (Connection->PlayerController)
+				{
+					Connection->PlayerController->SendClientAdjustment();
+				}
+
+				for (int32 ChildIdx = 0; ChildIdx < Connection->Children.Num(); ChildIdx++)
+				{
+					if (Connection->Children[ChildIdx]->PlayerController != NULL)
+					{
+						Connection->Children[ChildIdx]->PlayerController->SendClientAdjustment();
+					}
+				}
+
+				FMemMark RelevantActorMark(FMemStack::Get());
+
+				FActorPriority* PriorityList = NULL;
+				FActorPriority** PriorityActors = NULL;
+
+				// Get a sorted list of actors for this connection
+				const int32 FinalSortedCount = ServerReplicateActors_PrioritizeActors(Connection, ConnectionViewers, ConsiderList, bCPUSaturated, PriorityList, PriorityActors);
+
+				// Process the sorted list of actors for this connection
+				const int32 LastProcessedActor = ServerReplicateActors_ProcessPrioritizedActors(Connection, ConnectionViewers, PriorityActors, FinalSortedCount, Updated);
+
+				// relevant actors that could not be processed this frame are marked to be considered for next frame
+				for (int32 k = LastProcessedActor; k < FinalSortedCount; k++)
+				{
+					if (!PriorityActors[k]->ActorInfo)
+					{
+						// A deletion entry, skip it because we dont have anywhere to store a 'better give higher priority next time'
+						continue;
+					}
+
+					AActor* Actor = PriorityActors[k]->ActorInfo->Actor;
+
+					UActorChannel* Channel = PriorityActors[k]->Channel;
+
+					if (Channel != NULL && Time - Channel->RelevantTime <= 1.f)
+					{
+						PriorityActors[k]->ActorInfo->bPendingNetUpdate = true;
+					}
+					else if (IsActorRelevantToConnection(Actor, ConnectionViewers))
+					{
+						// If this actor was relevant but didn't get processed, force another update for next frame
+						PriorityActors[k]->ActorInfo->bPendingNetUpdate = true;
+						if (Channel != NULL)
+						{
+							Channel->RelevantTime = Time + 0.5f * rand();
+						}
+					}
+				}
+				RelevantActorMark.Pop();
+
+				ConnectionViewers.Reset();
+			}
+		}
+
+		// shuffle the list of connections if not all connections were ticked
+		if (NumClientsToTick < ClientConnections.Num())
+		{
+			int32 NumConnectionsToMove = NumClientsToTick;
+			while (NumConnectionsToMove > 0)
+			{
+				// move all the ticked connections to the end of the list so that the other connections are considered first for the next frame
+				UObject* Connection = ClientConnections[0];
+				ClientConnections.RemoveAt(0, 1);
+				ClientConnections.Add(Connection);
+				NumConnectionsToMove--;
+			}
+		}
+		Mark.Pop();
+
+		if (DebugRelevantActors)
+		{
+			PrintDebugRelevantActors();
+			LastPrioritizedActors.Empty();
+			LastSentActors.Empty();
+			LastRelevantActors.Empty();
+			LastNonRelevantActors.Empty();
+
+			DebugRelevantActors = false;
+		}
+
+		return Updated;
+	}
+
 
 }
 
