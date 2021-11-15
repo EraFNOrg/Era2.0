@@ -20,8 +20,12 @@ namespace Net
 		inline void (*ActorCallPreReplication)(UObject*, UObject*);
 		inline bool (*ActorIsNetStartupActor)(UObject*);
 		inline void (*RemoveNetworkActor)(UObject*, UObject*);
-		inline float(*ActorGetNetPriority)(UObject*, FVector&, FVector&, UObject*, UObject*, UObject*, float, bool);
-		inline int64(*ActorChannelReplicateActor)(UObject*);
+		inline float (*ActorGetNetPriority)(UObject*, FVector&, FVector&, UObject*, UObject*, UObject*, float, bool);
+		inline int64 (*ActorChannelReplicateActor)(UObject*);
+		inline float (*EngineGetMaxTickRate)(UObject*, float, bool);
+		inline UObject* (*ConnectionFindActorChannelRef)(UObject*, const TSharedRef<UObject*>&);
+		inline void (*ControllerSendClientAdjustment)(UObject*);
+		inline bool (*ActorIsNetRelevantFor)(UObject*, const UObject*, const UObject*, const FVector&);
 
 		bool Init()
 		{
@@ -30,9 +34,14 @@ namespace Net
 			RemoveNetworkActor = decltype(RemoveNetworkActor)(FindPattern(_("E8 ? ? ? ? 48 83 C3 10 48 3B DF 75 E7 48 8B 5C 24 ?")));
 			ActorGetNetPriority = decltype(ActorGetNetPriority)(FindPattern(_("Some Pattern")));
 			ActorChannelReplicateActor = decltype(ActorChannelReplicateActor)(FindPattern(_("Some Pattern")));
+			EngineGetMaxTickRate = decltype(EngineGetMaxTickRate)(FindPattern(_("Some Pattern")));
+			ConnectionFindActorChannelRef = decltype(ConnectionFindActorChannelRef)(FindPattern(_("Some Pattern")));
+			ControllerSendClientAdjustment = decltype(ControllerSendClientAdjustment)(FindPattern(_("Some Pattern")));
+			ActorIsNetRelevantFor = decltype(ActorIsNetRelevantFor)(FindPattern(_("Some Pattern")));
 
-			if (ActorCallPreReplication && ActorIsNetStartupActor && RemoveNetworkActor && ActorGetNetPriority && 
-				ActorChannelReplicateActor)
+			if (ActorCallPreReplication && ActorIsNetStartupActor && RemoveNetworkActor && ActorGetNetPriority
+				&& ActorChannelReplicateActor && EngineGetMaxTickRate && ConnectionFindActorChannelRef
+				&& ControllerSendClientAdjustment && ActorIsNetRelevantFor)
 			{
 				return true;
 			}

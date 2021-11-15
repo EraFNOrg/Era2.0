@@ -195,11 +195,7 @@ void Athena::TeleportToSpawnIsland()
 
 void Athena::ConsoleKey()
 {
-	auto F2Key = FKey();
-
-	F2Key.KeyName = kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"F2")));
-
-	FindObject(_(L"/Script/Engine.Default__InputSettings"))->Child<TArray<FKey>>(_("ConsoleKeys"))[0] = F2Key;
+	FindObject(_(L"/Script/Engine.Default__InputSettings"))->Child<TArray<FKey>>(_("ConsoleKeys"))[0] = FKey(_(L"F2"));
 }
 
 void Athena::Tick()

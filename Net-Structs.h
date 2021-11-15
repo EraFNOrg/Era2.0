@@ -417,13 +417,31 @@ namespace Net
 		int32_t WeakReferenceCount;
 	};
 
+	template<class ObjectType>
+	class TSharedRef
+	{
+	private:
+		struct Counts
+		{
+			int32_t SharedReferenceCount;
+			int32_t WeakReferenceCount;
+		};
+
+	public:
+
+		ObjectType* Object;
+		Counts* ReferenceController;
+	};
+
 	template<class PtrType>
 	class TWeakObjectPtr
 	{
 		int32 ObjectIndex;
 		int32 ObjectSerialNumber;
 
-		// FISCHSALAT: I'd implement a get function to get be able to "dereference" the pointer, but well, danii removed GObjects
+		TWeakObjectPtr(const UObject* Object)
+		{
+		}
 	};
 
 	struct FActorDestructionInfo
@@ -472,26 +490,44 @@ namespace Net
 	struct FNetworkObjectInfo
 	{
 		UObject* Actor;
-		uint8_t bDirtyForReplay : 1;
-		uint8_t bPendingNetUpdate : 1;
-		uint8_t bSwapRolesOnReplicate;
-		uint32_t ForceRelevantFrame;
-		double LastNetReplicateTime;
-		float LastNetUpdateTime;
+		
+		TWeakObjectPtr<UObject> WeakActor;
+
 		double NextUpdateTime;
+
+		double LastNetReplicateTime;
+
 		float OptimalNetUpdateDelta;
 
+		float LastNetUpdateTime;
+
+		uint32 bPendingNetUpdate : 1;
+
+		uint32 bForceRelevantNextUpdate : 1;
+
+		TSet<TWeakObjectPtr<UObject>> DormantConnections;
+
+		TSet<TWeakObjectPtr<UObject>> RecentlyDormantConnections;
+		/*
+		FNetworkObjectInfo()
+			: Actor(nullptr)
+			, NextUpdateTime(0.0)
+			, LastNetReplicateTime(0.0)
+			, OptimalNetUpdateDelta(0.0f)
+			, LastNetUpdateTime(0.0f)
+			, bPendingNetUpdate(false)
+			, bForceRelevantNextUpdate(false) {}
+
 		FNetworkObjectInfo(UObject* InActor)
-		{
-			this->Actor = InActor;
-			this->NextUpdateTime = 0.0;
-			this->LastNetReplicateTime = 0.0;
-			this->OptimalNetUpdateDelta = 0.0f;
-			this->LastNetUpdateTime = 0.0f;
-			this->bPendingNetUpdate = false;
-			this->bDirtyForReplay = false;
-			this->bSwapRolesOnReplicate = false;
-		}
+			: Actor(InActor)
+			, WeakActor(InActor)
+			, NextUpdateTime(0.0)
+			, LastNetReplicateTime(0.0)
+			, OptimalNetUpdateDelta(0.0f)
+			, LastNetUpdateTime(0.0f)
+			, bPendingNetUpdate(false)
+			, bForceRelevantNextUpdate(false) {}
+		*/
 	};
 
 	struct FActorPriority
@@ -696,7 +732,6 @@ namespace Net
 		UObject* Actor;
 		const ENetRole	ActualRemoteRole;
 	};
-
 }
 
 

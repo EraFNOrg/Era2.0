@@ -22,7 +22,11 @@ public:
 	inline int Num() const
 	{
 		return count;
-	};
+	}
+	inline int Max() const
+	{
+		return max;
+	}
 	inline int Slack() const
 	{
 		return max - count;
@@ -30,6 +34,18 @@ public:
 	inline void Reserve(const int NumElements)
 	{
 		data = Slack() >= NumElements ? data : Realloc(data, (max = count + NumElements) * sizeof(ElementType), 0);
+	}
+	inline void Reset(int MinSizeAfterReset = 0)
+	{
+		if (max >= MinSizeAfterReset)
+		{
+			count = 0;
+
+		}
+	}
+	inline void RemoveAt(const int Index, const int Lenght)
+	{
+
 	}
 	void Add(ElementType InputData...)
 	{
@@ -161,6 +177,11 @@ struct FName
 {
 	uint32_t ComparisonIndex;
 	uint32_t DisplayIndex;
+
+	FName(const wchar_t* Name)
+	{
+		*this = kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(Name));
+	}
 
 	string ToString()
 	{
@@ -473,6 +494,9 @@ struct FKey
 	char pad[0x10];
 
 	FKey() {}
+	FKey(const wchar_t* Name) {
+		KeyName = FName(Name);
+	}
 	FKey(FName Name) {
 		KeyName = Name;
 	}

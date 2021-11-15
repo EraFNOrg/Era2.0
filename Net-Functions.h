@@ -340,7 +340,7 @@ namespace Net
 					continue;
 				}
 
-				UObject* Channel = (UActorChannel*)Connection->CreateChannel(CHTYPE_Actor, 1);
+				UObject* Channel = Connection->CreateChannel(CHTYPE_Actor, 1);
 				if (Channel)
 				{
 					FinalRelevantCount++;
@@ -501,7 +501,7 @@ namespace Net
 			return ServerReplicateActors(Driver->Child(_("ReplicationDriver")), DeltaSeconds);
 		}
 
-
+		
 		// Bump the ReplicationFrame value to invalidate any properties marked as "unchanged" for this frame.
 		ReplicationFrame++;
 
@@ -516,7 +516,7 @@ namespace Net
 		}
 
 
-		UObject* WorldSettings = nullptr; World->GetWorldSettings(); // ULevel->WorldSettings
+		UObject* WorldSettings = nullptr; // ULevel->WorldSettings
 
 		if (Driver->Child(_("World"))->Child(_("PersistentLevel")))
 		{
@@ -524,7 +524,7 @@ namespace Net
 		}
 
 		bool bCPUSaturated = false;
-		float ServerTickTime = GEngine->GetMaxTickRate(DeltaSeconds);
+		float ServerTickTime = Globals::EngineGetMaxTickRate(UEngine, DeltaSeconds, false);
 		if (ServerTickTime == 0.f)
 		{
 			ServerTickTime = DeltaSeconds;
@@ -539,9 +539,9 @@ namespace Net
 		ConsiderList.Reserve(GetNetworkObjectList().GetActiveObjects().Num());
 
 		// Build the consider list (actors that are ready to replicate)
-		ServerReplicateActors_BuildConsiderList(ConsiderList, ServerTickTime);
+		ServerReplicateActors_BuildConsiderList(Driver, ConsiderList, ServerTickTime);
 
-		FMemMark Mark(FMemStack::Get());
+		//FMemMark Mark(FMemStack::Get()); Its a thing for the future when we need to optimize stuff
 
 		for (int32 i = 0; i < ClientConnections.Num(); i++)
 		{
@@ -550,30 +550,31 @@ namespace Net
 			// net.DormancyValidate can be set to 2 to validate all dormant actors against last known state before going dormant
 			if (CVarNetDormancyValidate.GetValueOnAnyThread() == 2)
 			{
+				TMap<TWeakObjectPtr<UObject>, TSharedRef<FObjectReplicator> > DormantReplicatorMap;
+
 				for (auto It = Connection->DormantReplicatorMap.CreateIterator(); It; ++It)
 				{
 					FObjectReplicator& Replicator = It.Value().Get();
 
 					if (Replicator.OwningChannel != nullptr)
 					{
-						Replicator.ValidateAgainstState(Replicator.OwningChannel->GetActor());
+						Replicator.ValidateAgainstState(Replicator.OwningChannel->Child(_("Actor")));
 					}
 				}
 			}
 
-			// if this client shouldn't be ticked this frame
+			// if this client shouldn't be ticked this framep
 			if (i >= NumClientsToTick)
 			{
-				//UE_LOG(LogNet, Log, TEXT("skipping update to %s"),*Connection->GetName());
 				// then mark each considered actor as bPendingNetUpdate so that they will be considered again the next frame when the connection is actually ticked
 				for (int32 ConsiderIdx = 0; ConsiderIdx < ConsiderList.Num(); ConsiderIdx++)
 				{
-					AActor* Actor = ConsiderList[ConsiderIdx]->Actor;
+					UObject* Actor = ConsiderList[ConsiderIdx]->Actor;
 					// if the actor hasn't already been flagged by another connection,
 					if (Actor != NULL && !ConsiderList[ConsiderIdx]->bPendingNetUpdate)
 					{
 						// find the channel
-						UActorChannel* Channel = Connection->FindActorChannelRef(ConsiderList[ConsiderIdx]->WeakActor);
+						UObject* Channel = Globals::ConnectionFindActorChannelRef(Connection, ConsiderList[ConsiderIdx]->WeakActor);
 						// and if the channel last update time doesn't match the last net update time for the actor
 						if (Channel != NULL && Channel->LastUpdateTime < ConsiderList[ConsiderIdx]->LastNetUpdateTime)
 						{
@@ -586,46 +587,48 @@ namespace Net
 				// clear the time sensitive flag to avoid sending an extra packet to this connection
 				Connection->TimeSensitive = false;
 			}
-			else if (Connection->ViewTarget)
+			else if (Connection->Child(_("ViewTarget")))
 			{
 				// Make a list of viewers this connection should consider (this connection and children of this connection)
-				TArray<FNetViewer>& ConnectionViewers = WorldSettings->ReplicationViewers;
+				TArray<FNetViewer>& ConnectionViewers = WorldSettings->Child<TArray<struct FNetViewer>>(_("ReplicationViewers"));
+
+				auto& ConnectionChildren = Connection->Child<TArray<UObject*>>(_("Children"));
 
 				ConnectionViewers.Reset();
 				new(ConnectionViewers)FNetViewer(Connection, DeltaSeconds);
-				for (int32 ViewerIndex = 0; ViewerIndex < Connection->Children.Num(); ViewerIndex++)
+				for (int32 ViewerIndex = 0; ViewerIndex < ConnectionChildren.Num(); ViewerIndex++)
 				{
-					if (Connection->Children[ViewerIndex]->ViewTarget != NULL)
+					if (ConnectionChildren[ViewerIndex]->Child(_("ViewTarget")) != NULL)
 					{
-						new(ConnectionViewers)FNetViewer(Connection->Children[ViewerIndex], DeltaSeconds);
+						new(ConnectionViewers)FNetViewer(ConnectionChildren[ViewerIndex], DeltaSeconds);
 					}
 				}
 
 				// send ClientAdjustment if necessary
 				// we do this here so that we send a maximum of one per packet to that client; there is no value in stacking additional corrections
-				if (Connection->PlayerController)
+				if (Connection->Child(_("PlayerController")))
 				{
-					Connection->PlayerController->SendClientAdjustment();
+					Globals::ControllerSendClientAdjustment(Connection->Child(_("PlayerController")));
 				}
 
-				for (int32 ChildIdx = 0; ChildIdx < Connection->Children.Num(); ChildIdx++)
+				for (int32 ChildIdx = 0; ChildIdx < ConnectionChildren.Num(); ChildIdx++)
 				{
-					if (Connection->Children[ChildIdx]->PlayerController != NULL)
+					if (ConnectionChildren[ChildIdx]->Child(_("PlayerController")) != NULL)
 					{
-						Connection->Children[ChildIdx]->PlayerController->SendClientAdjustment();
+						Globals::ControllerSendClientAdjustment(ConnectionChildren[ChildIdx]->Child(_("PlayerController")));
 					}
 				}
 
-				FMemMark RelevantActorMark(FMemStack::Get());
+				//FMemMark RelevantActorMark(FMemStack::Get()); // Maybe later when we commit optimization
 
 				FActorPriority* PriorityList = NULL;
 				FActorPriority** PriorityActors = NULL;
 
 				// Get a sorted list of actors for this connection
-				const int32 FinalSortedCount = ServerReplicateActors_PrioritizeActors(Connection, ConnectionViewers, ConsiderList, bCPUSaturated, PriorityList, PriorityActors);
+				const int32 FinalSortedCount = ServerReplicateActors_PrioritizeActors(Driver, Connection, ConnectionViewers, ConsiderList, bCPUSaturated, PriorityList, PriorityActors);
 
 				// Process the sorted list of actors for this connection
-				const int32 LastProcessedActor = ServerReplicateActors_ProcessPrioritizedActors(Connection, ConnectionViewers, PriorityActors, FinalSortedCount, Updated);
+				const int32 LastProcessedActor = ServerReplicateActors_ProcessPrioritizedActors(Driver, Connection, ConnectionViewers, PriorityActors, FinalSortedCount, Updated);
 
 				// relevant actors that could not be processed this frame are marked to be considered for next frame
 				for (int32 k = LastProcessedActor; k < FinalSortedCount; k++)
@@ -636,11 +639,24 @@ namespace Net
 						continue;
 					}
 
-					AActor* Actor = PriorityActors[k]->ActorInfo->Actor;
+					UObject* Actor = PriorityActors[k]->ActorInfo->Actor;
 
-					UActorChannel* Channel = PriorityActors[k]->Channel;
+					UObject* Channel = PriorityActors[k]->Channel;
 
-					if (Channel != NULL && Time - Channel->RelevantTime <= 1.f)
+					static auto IsActorRelevantToConnection = [](UObject* Actor, const TArray<FNetViewer>& ConnectionViewers)
+					{
+						for (int32 viewerIdx = 0; viewerIdx < ConnectionViewers.Num(); viewerIdx++)
+						{
+							if (Globals::ActorIsNetRelevantFor(Actor, ConnectionViewers[viewerIdx].InViewer, ConnectionViewers[viewerIdx].ViewTarget, ConnectionViewers[viewerIdx].ViewLocation))
+							{
+								return true;
+							}
+						}
+
+						return false;
+					};
+
+					if (Channel != NULL && Driver->Child<float>(_("Time")) - Channel->RelevantTime <= 1.f)
 					{
 						PriorityActors[k]->ActorInfo->bPendingNetUpdate = true;
 					}
@@ -673,7 +689,7 @@ namespace Net
 				NumConnectionsToMove--;
 			}
 		}
-		Mark.Pop();
+		//Mark.Pop();
 
 		if (DebugRelevantActors)
 		{
