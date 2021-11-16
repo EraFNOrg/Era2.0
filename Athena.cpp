@@ -25,7 +25,6 @@ void Athena::ShowSkin()
 	for (UObject* CurrentCharacterPart : CharacterPartsArray)
 		Pawn->Call(_("ServerChoosePart"), CurrentCharacterPart->Child<char>(_("CharacterPartType")), CurrentCharacterPart);
 
-
 	PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterParts"));
 	PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterData"));
 }
@@ -57,7 +56,7 @@ void Athena::DropLoadingScreen()
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("FullMapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush")).ObjectResource;
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
-	if (auto MAP = &(GameState->Child<UObject*>(_("MinimapMaterial"))); !IsBadReadPtr(MAP)) (*MAP) = FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena")) ? FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena")) : FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo"));
+	if (auto MAP = &(GameState->Child<UObject*>(_("MinimapMaterial"))); !IsBadReadPtr(MAP)) (*MAP) = FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) ? FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) : FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena"));
 
 	//Playlist
 	auto PlayList = FindObject(_(L"/Game/Athena/Playlists/Playground/Playlist_Playground.Playlist_Playground"));
@@ -83,6 +82,8 @@ void Athena::InventoryUpdate()
 
 void Athena::AddToInventory(class UObject* item, int Count, char Index, int Slot)
 {
+	if (IsBadReadPtr(item)) return;
+
 	static auto Size = *(int32*)(int64(FindObject(_(L"/Script/FortniteGame.FortItemEntry"))) + offsets::StructSize);
 
 	auto ItemInstance = item->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), Count, 1);
@@ -117,6 +118,11 @@ void Athena::AddToInventory(class UObject* item, int Count, char Index, int Slot
 	}
 	case 0x120: {
 		struct ItemEntry { char pad[0x120]; };
+		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
+		break;
+	}
+	case 0x150: {
+		struct ItemEntry { char pad[0x150]; };
 		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
 		break;
 	}
@@ -207,7 +213,7 @@ void Athena::Tick()
 void Athena::CheatScript(const char* script)
 {
 	string ScriptFullName = string(script);
-
+	
 	if (ScriptFullName.find("StartEvent") != -1)
 	{
 		bool bEventStarted = false;
@@ -249,7 +255,8 @@ void Athena::Fixbus()
 		FNVersion.starts_with(_("8.")) ||
 		FNVersion.starts_with(_("9.")) ||
 		FNVersion.starts_with(_("10.")) ||
-		FNVersion.starts_with(_("11."))) {
+		FNVersion.starts_with(_("11.")) ||
+		GetEngineVersion().ToString().substr(35, 4).starts_with(_("12."))) {
 		GameState->Child<char>(_("GamePhase")) = 3;
 		GameState->Call(_("OnRep_GamePhase"), char(2));
 

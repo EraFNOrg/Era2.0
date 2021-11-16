@@ -78,6 +78,20 @@ void Core::Setup()
 		offsets::ReturnValueOffset = 0xA0;
 		offsets::SuperClass = 0x40;
 		offsets::StructSize = 0x50;
+		break;
+	}
+	case 425: {
+		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 55 56 57 48 8B EC 48 83 EC 30 8B 01 48 8B F1 44 8B 49 04 8B F8")));
+		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
+		offsets::Children = 0x48;
+		offsets::Next = 0x28;
+		offsets::ParamsSize = 0xCE;
+		offsets::ReturnValueOffset = 0xD0;
+		offsets::SuperClass = 0x40;
+		offsets::StructSize = 0x58;
+		offsets::Offset = 0x4C;
+		offsets::Class = 0x78;
+		break;
 	}
 	}
 }
@@ -107,7 +121,12 @@ void Core::InitializeHook()
 	kismetStringLib = FindObject(_(L"/Script/Engine.Default__KismetStringLibrary"));
 
 	//CH2 checks
-	if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11.")) ||
+	if (GetEngineVersion().ToString().substr(35, 4).starts_with(_("12.")))
+	{
+		PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x42]);
+		Hook(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x42], (LPVOID*)(&PE), ProcessEvent);
+	}
+	else if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11.")) ||
 		GetEngineVersion().ToString().substr(34, 4).starts_with(_("7.4"))) {
 		PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x41]);
 		Hook(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x41], (LPVOID*)(&PE), ProcessEvent);
@@ -143,8 +162,7 @@ void Core::InitializeGlobals()
 		->Child(_("WorldSettings"));
 
 	//Console & CheatManager
-	auto TempCheatMananger = FindObject(_(L"/Script/Engine.CheatManager"));
-	CheatManager = GameStatics->Call<UObject*>(_("SpawnObject"), TempCheatMananger, PlayerController);
+	CheatManager = GameStatics->Call<UObject*>(_("SpawnObject"), FindObject(_(L"/Script/Engine.CheatManager")), PlayerController);
 	PlayerController->Child(_("CheatManager")) = CheatManager;
 	GameViewportClient->Child(_("ViewportConsole")) = GameStatics->Call<UObject*>(_("SpawnObject"), FindObject(_(L"/Script/Engine.Console")), GameViewportClient);
 

@@ -45,7 +45,8 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 		!bPressedPlay)
 	{
 		//Season check
-		if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11."))) {
+		if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11.")) ||
+			GetEngineVersion().ToString().substr(35, 4).starts_with(_("12."))) {
 			PlayerController->Call(_("SwitchLevel"), FString(_(L"Apollo_Terrain")));
 			bPressedPlay = !bPressedPlay;
 		}

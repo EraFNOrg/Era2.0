@@ -116,6 +116,57 @@ struct FName
 	}
 };
 
+class FFieldClass
+{
+public:
+	FName NamePrivate;
+	char Id;
+	void* CastFlags;
+	char ClassFlags;
+	FFieldClass* Super;
+	void* DefaultObj;
+
+	string GetName()
+	{
+		string name = NamePrivate.ToString();
+		auto pos = name.rfind('/');
+		if (pos == std::string::npos)
+		{
+			return name;
+		}
+
+		return name.substr(pos + 1);
+	}
+};
+
+class FField
+{
+public:
+	void* VTablePointer;
+	FFieldClass* ClassPointer;
+	char pad[0x10];
+	FField* Next;
+	FName Name;
+	char Flags;
+
+	bool IsValid()
+	{
+		return !IsBadReadPtr(&Name);
+	}
+
+	string GetName()
+	{
+		string name = Name.ToString();
+		auto pos = name.rfind('/');
+		if (pos == std::string::npos)
+		{
+			return name;
+		}
+
+		return name.substr(pos + 1);
+	}
+};
+
 class UObject
 {
 public:
@@ -159,44 +210,76 @@ public:
 	}
 
 	template<typename T = UObject*>
-	T& Child(string name)
+	T& Child(string name, bool bIsFunction = false)
 	{
-		auto Class = this->Class;
-		
-		while (true)
-		{
-			if (!Class) break;
+		UObject* Class = this->Class;
 
-			auto Children = *(UObject**)(int64(Class) + offsets::Children);
+		//Scan UProperties
+		while (Class)
+		{
+			UObject* Children = *(UObject**)(int64(Class) + offsets::Children);
 
 			if (!Children) {
 				Class = *(UObject**)(int64(Class) + offsets::SuperClass);
 				continue;
 			}
 
-			while (true)
+			while (Children)
 			{
 				if (Children->Class->GetName() == _("StructProperty"))
 				{
-					auto StructChildren = *(UObject**)(int64(*(UObject**)(int64(Children) + 0x70)) + offsets::Children);
+					auto StructChildren = *(UObject**)(int64(*(UObject**)(int64(Children) + offsets::Class)) + offsets::Children);
 
-					while (true)
+					while (StructChildren)
 					{
-						if (!StructChildren) break;
-
-						if (StructChildren->GetName() == name) return  *(T*)(int64(this) + *(uint32*)(int64(Children) + 0x44) + *(uint32*)(int64(StructChildren) + 0x44));
+						if (StructChildren->GetName() == name) return *(T*)(int64(this) + *(uint32*)(int64(Children) + offsets::Offset) + *(uint32*)(int64(StructChildren) + offsets::Offset));
 
 						StructChildren = *(UObject**)(int64(StructChildren) + offsets::Next);
 					}
 				}
 
-				if (Children->GetName() == name && Children->Class->GetName() == _("Function")) return *(T*)(&*Children);
-			
-				if (Children->GetName() == name) return *(T*)(int64(this) + *(uint32*)(int64(Children) + 0x44));
+				if (Children->GetName() == name)
+				{
+					if (bIsFunction) return *(T*)(&*Children);
+
+					return *(T*)(int64(this) + *(int32*)(int64(Children) + offsets::Offset));
+				}
 
 				Children = *(UObject**)(int64(Children) + offsets::Next);
+			}
 
-				if (!Children) break;
+			Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+		}
+
+		//Scan FFields
+		Class = this->Class;
+
+		while (Class)
+		{	
+			FField* ChildrenProperties = *(FField**)(int64(Class) + 0x50);
+			
+			if (!ChildrenProperties->IsValid()) {
+				Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+				continue;
+			}
+
+			while (ChildrenProperties->IsValid())
+			{
+				if (ChildrenProperties->ClassPointer->GetName() == _("StructProperty"))
+				{
+					auto StructChildren = *(FField**)(int64(*(UObject**)(int64(ChildrenProperties) + offsets::Class)) + 0x50);
+
+					while (StructChildren)
+					{
+						if (StructChildren->GetName() == name) return *(T*)(int64(this) + *(uint32*)(int64(ChildrenProperties) + 0x4C) + *(uint32*)(int64(StructChildren) + 0x4C));
+
+						StructChildren = StructChildren->Next;
+					}
+				}
+
+				if (ChildrenProperties->GetName() == name) return *(T*)(int64(this) + *(int32*)(int64(ChildrenProperties) + 0x4C));
+
+				ChildrenProperties = ChildrenProperties->Next;
 			}
 
 			Class = *(UObject**)(int64(Class) + offsets::SuperClass);
@@ -210,14 +293,26 @@ public:
 		auto ReturnVector = vector<int32>();
 
 		auto Children = *(UObject**)(int64(this) + offsets::Children);
+		auto ChildrenProperties = *(FField**)(int64(this) + 0x50);
 
+		//Scan UProperties
 		while (true)
 		{
 			if (!Children) break;
 
-			ReturnVector.push_back(*(int*)(int64(Children) + 0x44));
+			ReturnVector.push_back(*(int*)(int64(Children) + offsets::Offset));
 
 			Children = *(UObject**)(int64(Children) + offsets::Next);
+		}
+
+		//Scan FFields
+		while (true)
+		{
+			if (!ChildrenProperties->IsValid()) break;
+
+			ReturnVector.push_back(*(int*)(int64(ChildrenProperties) + 0x4C));
+
+			ChildrenProperties = ChildrenProperties->Next;
 		}
 
 		return ReturnVector;
@@ -226,7 +321,7 @@ public:
 	template< typename T = int, int16 ReturnOffset = -1, typename ...Params >
 	T Call(string name, Params... args)
 	{
-		auto Function = &(this->Child<UObject>(name));
+		auto Function = &(this->Child<UObject>(name, true));
 
 		if (!IsBadReadPtr(Function)) {
 			auto ParamsSize = *(int16*)(int64(Function) + offsets::ParamsSize);

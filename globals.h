@@ -39,9 +39,12 @@ inline vector<class UObject*> CharacterPartsArray;
 inline bool bLoadedInMatch = false;
 inline bool bDroppedFromAircraft = false;
 inline bool bPressedPlay = false;
+inline bool bCoreInitialized = false;
 
 namespace offsets
 {
+	inline int32 Class = 0x70;
+	inline int32 Offset = 0x44;
 	inline int32 Children = 0x38;
 	inline int32 Next = 0x28;
 	inline int32 ParamsSize = 0x8E;
