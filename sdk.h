@@ -507,6 +507,13 @@ inline UObject* FindObject(const wchar_t* Name)
 	return nullptr;
 }
 
+inline int32 FindOffset(const wchar_t* Name)
+{
+	auto Obj = StaticFindObject(nullptr, nullptr, Name, false);
+
+	return *(int32*)(int64(Obj) + offsets::Offset);
+}
+
 inline FKey GetKeyFromAction(string ActionName)
 {
 	static TArray<KeyMap> Settings = TArray<KeyMap>();

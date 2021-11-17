@@ -22,6 +22,7 @@ public:
 	static void Tick();
 	static void CheatScript(const char* script);
 	static void Fixbus();
+	static void SpawnPickup(class UObject* ItemDefinition, int Count, struct FVector Location);
 	static void GrantAbility(class UObject* Class);
 private:
 };

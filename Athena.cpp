@@ -214,7 +214,16 @@ void Athena::CheatScript(const char* script)
 {
 	string ScriptFullName = string(script);
 	
-	if (ScriptFullName.find("StartEvent") != -1)
+	if (ScriptFullName.find(_("SpawnWeapon")) != -1)
+	{
+		string WeaponName = ScriptFullName.substr(ScriptFullName.find(_(" ")) + 1);
+		wstring Path = _(L"/Game/Athena/Items/Weapons/");
+		Path.append(wstring(WeaponName.begin(), WeaponName.end())).append(_(L".")).append(wstring(WeaponName.begin(), WeaponName.end()));
+		auto ItemDefinition = FindObject(Path.c_str());
+
+		if (ItemDefinition) SpawnPickup(ItemDefinition, 1, Pawn->Call<FVector>(_("K2_GetActorLocation")));
+	}
+	else if (ScriptFullName.find(_("StartEvent")) != -1)
 	{
 		bool bEventStarted = false;
 
@@ -265,6 +274,17 @@ void Athena::Fixbus()
 		Pawn->Child<bool>(_("bIsSkydiving")) = true;
 		Pawn->Call(_("OnRep_IsSkydiving"), false);
 	}
+}
+
+void Athena::SpawnPickup(UObject* ItemDefinition, int Count, FVector Location)
+{
+	auto Pickup = Core::SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortPickupAthena")), Location);
+
+	*(UObject**)(int64(Pickup) + FindOffset(_(L"/Script/FortniteGame.FortPickup.PrimaryPickupItemEntry")) + FindOffset(_(L"/Script/FortniteGame.FortItemEntry.ItemDefinition"))) = ItemDefinition;
+	*(int*)(int64(Pickup) + FindOffset(_(L"/Script/FortniteGame.FortPickup.PrimaryPickupItemEntry")) + FindOffset(_(L"/Script/FortniteGame.FortItemEntry.Count"))) = Count;
+
+	Pickup->Call(_("OnRep_PrimaryPickupItemEntry"));
+	Pickup->Call(_("TossPickup"), Location, Pawn, 1, true, char(0), char(0));
 }
 
 void Athena::GrantAbility(UObject* Class)

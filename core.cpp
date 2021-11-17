@@ -113,7 +113,7 @@ void Core::InitializeHook()
 
 	printf(_("Era 2.0 || Made by danii#2961\nBackend by Kyiro#7884\nLauncher by ozne#3303 and Not a Robot#6932\nSpecial Thanks to Sizzy, Kemo, Mix, Fischsalat!\n\nEnjoy!\n\n\n"));
 
-	FreeConsole();
+	//FreeConsole();
 
 	GameStatics = FindObject(_(L"/Script/Engine.Default__GameplayStatics"));
 	kismetMathLib = FindObject(_(L"/Script/Engine.Default__KismetMathLibrary"));
