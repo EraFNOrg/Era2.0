@@ -1,6 +1,7 @@
 #pragma once
 #include "core.h"
 #include "sdk.h"
+#include "Athena.h"
 #include <string>
 
 inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
@@ -12,6 +13,10 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 		!bLoadedInMatch)
 	{
 		Core::OnReadyToStartMatch();
+	}
+	else if (FuncName.find(_("ServerHandlePickup")) != -1)
+	{
+		Athena::ServerHandlePickup(*(UObject**)(Params));
 	}
 	else if (FuncName.find(_("ServerLoadingScreenDropped")) != -1 &&
 		bLoadedInMatch)

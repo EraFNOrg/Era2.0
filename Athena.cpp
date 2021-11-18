@@ -263,6 +263,26 @@ void Athena::CheatScript(const char* script)
 	}
 }
 
+void Athena::ServerHandlePickup(UObject* Pickup)
+{
+	UObject* ItemDefinition = Pickup->Child(_("ItemDefinition"));
+	int Count = Pickup->Child<int>(_("Count"));
+}
+
+void Athena::FixBuildingFoundations()
+{
+	if (!GetEngineVersion().ToString().substr(34, 4).starts_with(_("6.")) &&
+		!GetEngineVersion().ToString().substr(34, 4).starts_with(_("7.")) &&
+		!GetEngineVersion().ToString().substr(34, 4).starts_with(_("8."))) return;
+
+	auto Array = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), GameViewportClient->Child(_("World")), FindObject(_(L"/Script/FortniteGame.BuildingFoundation")), TArray<UObject*>());
+	
+	for (UObject* CurrentBuilding : Array) {
+		if (CurrentBuilding->Child<char>(_("DynamicFoundationType")) == char(2))
+			CurrentBuilding->Child<char>(_("DynamicFoundationType")) = char(0);
+	}
+}
+
 void Athena::Fixbus()
 {
 	string FNVersion = GetEngineVersion().ToString().substr(34, 4);
@@ -316,6 +336,7 @@ void Athena::GrantDefaultAbilities()
 	GrantAbility(FindObject(_(L"/Game/Athena/DrivableVehicles/GA_AthenaExitVehicle.GA_AthenaExitVehicle_C")));
 	GrantAbility(FindObject(_(L"/Game/Athena/DrivableVehicles/GA_AthenaInVehicle.GA_AthenaInVehicle_C")));
 	GrantAbility(FindObject(_(L"/Game/Athena/Items/ForagedItems/Rift/GA_Rift_Athena_Skydive.GA_Rift_Athena_Skydive_C")));
+	GrantAbility(FindObject(_(L"/Game/Athena/Environments/Blueprints/SurfaceEffects/GAB_SurfaceChange.GAB_SurfaceChange_C")));
 }
 
 void Athena::OnAircraftJump()
