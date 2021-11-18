@@ -214,7 +214,14 @@ void Athena::CheatScript(const char* script)
 {
 	string ScriptFullName = string(script);
 	
-	if (ScriptFullName.find(_("SpawnWeapon")) != -1)
+	transform(ScriptFullName.begin(), ScriptFullName.end(), ScriptFullName.begin(), ::tolower);
+
+	if (ScriptFullName.find(_("spawnrift")) != -1)
+	{
+		if (!Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/Items/Consumables/RiftItem/BGA_RiftPortal_Item_Athena.BGA_RiftPortal_Item_Athena_C")), Pawn->Call<FVector>(_("K2_GetActorLocation"))))
+			GameMode->Call(_("Say"), FString(_(L"Rifts arent in-game on the version of fortnite you are currently using.")));
+	}
+	else if (ScriptFullName.find(_("spawnweapon")) != -1)
 	{
 		string WeaponName = ScriptFullName.substr(ScriptFullName.find(_(" ")) + 1);
 		wstring Path = _(L"/Game/Athena/Items/Weapons/");
@@ -223,7 +230,7 @@ void Athena::CheatScript(const char* script)
 
 		if (ItemDefinition) SpawnPickup(ItemDefinition, 1, Pawn->Call<FVector>(_("K2_GetActorLocation")));
 	}
-	else if (ScriptFullName.find(_("StartEvent")) != -1)
+	else if (ScriptFullName.find(_("startevent")) != -1)
 	{
 		bool bEventStarted = false;
 
@@ -280,11 +287,10 @@ void Athena::SpawnPickup(UObject* ItemDefinition, int Count, FVector Location)
 {
 	auto Pickup = Core::SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortPickupAthena")), Location);
 
-	*(UObject**)(int64(Pickup) + FindOffset(_(L"/Script/FortniteGame.FortPickup.PrimaryPickupItemEntry")) + FindOffset(_(L"/Script/FortniteGame.FortItemEntry.ItemDefinition"))) = ItemDefinition;
-	*(int*)(int64(Pickup) + FindOffset(_(L"/Script/FortniteGame.FortPickup.PrimaryPickupItemEntry")) + FindOffset(_(L"/Script/FortniteGame.FortItemEntry.Count"))) = Count;
-
+	Pickup->Child(_("ItemDefinition")) = ItemDefinition;
+	Pickup->Child<int>(_("Count")) = Count;
 	Pickup->Call(_("OnRep_PrimaryPickupItemEntry"));
-	Pickup->Call(_("TossPickup"), Location, Pawn, 1, true, char(0), char(0));
+	Pickup->Call(_("TossPickup"), Location, Pawn, 1, true);
 }
 
 void Athena::GrantAbility(UObject* Class)
@@ -309,6 +315,7 @@ void Athena::GrantDefaultAbilities()
 	GrantAbility(FindObject(_(L"/Game/Athena/DrivableVehicles/GA_AthenaEnterVehicle.GA_AthenaEnterVehicle_C")));
 	GrantAbility(FindObject(_(L"/Game/Athena/DrivableVehicles/GA_AthenaExitVehicle.GA_AthenaExitVehicle_C")));
 	GrantAbility(FindObject(_(L"/Game/Athena/DrivableVehicles/GA_AthenaInVehicle.GA_AthenaInVehicle_C")));
+	GrantAbility(FindObject(_(L"/Game/Athena/Items/ForagedItems/Rift/GA_Rift_Athena_Skydive.GA_Rift_Athena_Skydive_C")));
 }
 
 void Athena::OnAircraftJump()

@@ -11,6 +11,7 @@ public:
 	static void InitializeHook();
 	static void InitializeGlobals();
 	static void OnReadyToStartMatch();
+	static void PlayButton();
 	static void OnServerLoadingScreenDropped();
 	static class UObject* SpawnActorEasy(class UObject* Class, struct FVector Location);
 };

@@ -40,21 +40,16 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	{
 		Athena::CheatScript(((FString*)Params)->ToString().c_str());
 	}
+	else if (FuncName.find(_("ReturnToMainMenu")) != -1)
+	{
+		PlayerController->Call(_("SwitchLevel"), FString(_(L"Frontend")));
+		bInFrontend = !bInFrontend;
+	}
 	else if ((FuncName.find(_("BndEvt__PlayButton_K2Node_ComponentBoundEvent_0_CommonButtonClicked__DelegateSignature")) != -1 ||
 		FuncName.find(_("BP_PlayButton")) != -1) &&
 		!bPressedPlay)
 	{
-		//Season check
-		if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11.")) ||
-			GetEngineVersion().ToString().substr(35, 4).starts_with(_("12."))) {
-			PlayerController->Call(_("SwitchLevel"), FString(_(L"Apollo_Terrain")));
-			bPressedPlay = !bPressedPlay;
-		}
-		else
-		{
-			PlayerController->Call(_("SwitchLevel"), FString(_(L"Athena_Terrain")));
-			bPressedPlay = !bPressedPlay;
-		}
+		Core::PlayButton();
 	}
 
 	return PE(Object, Function, Params);

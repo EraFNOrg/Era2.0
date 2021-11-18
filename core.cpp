@@ -7,6 +7,8 @@
 
 UObject* Core::SpawnActorEasy(UObject* Class, FVector Location)
 {
+	if (!Class) return nullptr;
+
 	FTransform Transform;
 
 	Transform.Translation = Location;
@@ -113,7 +115,7 @@ void Core::InitializeHook()
 
 	printf(_("Era 2.0 || Made by danii#2961\nBackend by Kyiro#7884\nLauncher by ozne#3303 and Not a Robot#6932\nSpecial Thanks to Sizzy, Kemo, Mix, Fischsalat!\n\nEnjoy!\n\n\n"));
 
-	//FreeConsole();
+	FreeConsole();
 
 	GameStatics = FindObject(_(L"/Script/Engine.Default__GameplayStatics"));
 	kismetMathLib = FindObject(_(L"/Script/Engine.Default__KismetMathLibrary"));
@@ -180,11 +182,37 @@ void Core::OnReadyToStartMatch()
 	Athena::DestroyLods();
 	Athena::DropLoadingScreen();
 	Athena::InitializeInventory();
+	Athena::GrantDefaultAbilities();
+}
+
+void Core::PlayButton()
+{
+	Core::InitializeGlobals();
+
+	//Season check
+	if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11.")) ||
+		GetEngineVersion().ToString().substr(35, 4).starts_with(_("12."))) {
+		PlayerController->Call(_("SwitchLevel"), FString(_(L"Apollo_Terrain")));
+	}
+	else
+	{
+		PlayerController->Call(_("SwitchLevel"), FString(_(L"Athena_Terrain")));
+	}
+
+	bPressedPlay = !bPressedPlay;
+	bInFrontend = !bInFrontend;
 }
 
 void Core::OnServerLoadingScreenDropped()
 {
-	Athena::GrantDefaultAbilities();
+	if (bInFrontend)
+	{
+		bPressedPlay = !bPressedPlay;
+		bLoadedInMatch = !bLoadedInMatch;
+		bDroppedFromAircraft = !bDroppedFromAircraft;
+		return;
+	}
+
 	Athena::RemoveNetDebugUI();
 	Athena::TeleportToSpawnIsland();
 	Athena::Fixbus();

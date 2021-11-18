@@ -500,18 +500,7 @@ struct KeyMap
 //Functions
 inline UObject* FindObject(const wchar_t* Name)
 {
-	auto ReturnValue = StaticFindObject(nullptr, nullptr, Name, false);
-	
-	if (ReturnValue) return ReturnValue;
-
-	return nullptr;
-}
-
-inline int32 FindOffset(const wchar_t* Name)
-{
-	auto Obj = StaticFindObject(nullptr, nullptr, Name, false);
-
-	return *(int32*)(int64(Obj) + offsets::Offset);
+	return StaticFindObject(nullptr, nullptr, Name, false);
 }
 
 inline FKey GetKeyFromAction(string ActionName)

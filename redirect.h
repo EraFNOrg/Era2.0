@@ -64,6 +64,8 @@ namespace Redirect
 					Core::InitializeHook();
 					Core::InitializeGlobals();
 				}
+
+				if (Url.find(_("matchmakingservice")) != -1 && bCoreInitialized && !bPressedPlay) Core::PlayButton();
 			}
 
 			returnValue = CurlSetHook(A, B, Url.c_str());
