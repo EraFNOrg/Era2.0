@@ -497,6 +497,12 @@ struct KeyMap
 	FKey Key;
 };
 
+struct FGameplayTagContainer
+{
+	TArray<FName> GameplayTags;
+	TArray<FName> ParentTags;
+};
+
 //Functions
 inline UObject* FindObject(const wchar_t* Name)
 {

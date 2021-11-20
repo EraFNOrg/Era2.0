@@ -18,6 +18,10 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	{
 		Athena::ServerHandlePickup(*(UObject**)(Params));
 	}
+	else if (FuncName.find(_("ServerCreateBuildingActor")) != -1)
+	{
+		Athena::OnServerCreateBuildingActor();
+	}
 	else if (FuncName.find(_("ServerLoadingScreenDropped")) != -1 &&
 		bLoadedInMatch)
 	{
@@ -30,10 +34,6 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	else if (FuncName.find(_("ServerExecuteInventoryWeapon")) != -1)
 	{
 		Athena::OnServerExecuteInventoryWeapon(*(UObject**)(Params));
-	}
-	else if (PlayerController && Object == PlayerController && FuncName.find(_("Tick")) != -1)
-	{
-		Athena::Tick();
 	}
 	else if ((FuncName.find(_("ServerAttemptAircraftJump")) != -1 ||
 		FuncName.find(_("OnAircraftExitedDropZone")) != -1) &&

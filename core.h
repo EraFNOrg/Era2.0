@@ -13,5 +13,5 @@ public:
 	static void OnReadyToStartMatch();
 	static void PlayButton();
 	static void OnServerLoadingScreenDropped();
-	static class UObject* SpawnActorEasy(class UObject* Class, struct FVector Location);
+	static class UObject* SpawnActorEasy(class UObject* Class, struct FVector Location, struct FRotator Rotation);
 };

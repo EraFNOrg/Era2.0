@@ -5,18 +5,13 @@
 #include "peh.h"
 #include "Athena.h"
 
-UObject* Core::SpawnActorEasy(UObject* Class, FVector Location)
+UObject* Core::SpawnActorEasy(UObject* Class, FVector Location, FRotator Rotation)
 {
 	if (!Class) return nullptr;
 
-	FTransform Transform;
+	SpawnActorParams params{};
 
-	Transform.Translation = Location;
-	Transform.Scale3D = FVector(1, 1, 1);
-	Transform.Rotation = FQuat{0,0,0,0 };
-
-	auto TempActor = GameStatics->Call<UObject*>(_("BeginDeferredActorSpawnFromClass"), World, Class, Transform, char(0), nullptr);
-	return GameStatics->Call<UObject*>(_("FinishSpawningActor"), TempActor, Transform);
+	return SpawnActor(World, Class, &Location, &Rotation, params);
 }
 
 void Core::Setup()
@@ -31,6 +26,8 @@ void Core::Setup()
 	StaticFindObject = decltype(StaticFindObject)(FindPattern(_("48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC 30 80 3D ? ? ? ? ? 41 0F B6 D9 49 8B F8 48 8B F2")));
 
 	GetEngineVersion = decltype(GetEngineVersion)(FindPattern(_("40 53 48 83 EC 20 48 8B D9 E8 ? ? ? ? 48 8B C8 41 B8 04 ? ? ? 48 8B D3")));
+
+	SpawnActor = decltype(SpawnActor)(FindPattern(_("40 53 56 57 48 83 EC 70 48 8B 05 ? ? ? ? 48 33 C4 48 89 44 24 ? 0F 28 1D ? ? ? ? 0F 57 D2 48 8B B4 24 ? ? ? ? 0F 28 CB")));
 	
 	//This is the fix to arrays behaving "bad", such as causing crashes when attempting to go back to lobby
 	//or freezing the game when adding to inventory in S9+ 
@@ -115,7 +112,7 @@ void Core::InitializeHook()
 
 	printf(_("Era 2.0 || Made by danii#2961\nBackend by Kyiro#7884\nLauncher by ozne#3303 and Not a Robot#6932\nSpecial Thanks to Sizzy, Kemo, Mix, Fischsalat!\n\nEnjoy!\n\n\n"));
 
-	//FreeConsole();
+	FreeConsole();
 
 	GameStatics = FindObject(_(L"/Script/Engine.Default__GameplayStatics"));
 	kismetMathLib = FindObject(_(L"/Script/Engine.Default__KismetMathLibrary"));
@@ -123,13 +120,13 @@ void Core::InitializeHook()
 	kismetStringLib = FindObject(_(L"/Script/Engine.Default__KismetStringLibrary"));
 
 	//CH2 checks
-	if (GetEngineVersion().ToString().substr(35, 4).starts_with(_("12.")))
+	if ((GetEngineVersion().ToString().substr(34, 4).find(_("12.")) != -1))
 	{
 		PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x42]);
 		Hook(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x42], (LPVOID*)(&PE), ProcessEvent);
 	}
-	else if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11.")) ||
-		GetEngineVersion().ToString().substr(34, 4).starts_with(_("7.4"))) {
+	else if ((GetEngineVersion().ToString().substr(34, 4).find(_("11.")) != -1) ||
+		(GetEngineVersion().ToString().substr(34, 4).find(_("7.4")) != -1)) {
 		PE = decltype(PE)(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x41]);
 		Hook(FindObject(_(L"/Script/CoreUObject.Default__Object"))->Vtable[0x41], (LPVOID*)(&PE), ProcessEvent);
 	}
@@ -177,8 +174,8 @@ void Core::PlayButton()
 	Core::InitializeGlobals();
 
 	//Season check
-	if (GetEngineVersion().ToString().substr(34, 4).starts_with(_("11.")) ||
-		GetEngineVersion().ToString().substr(35, 4).starts_with(_("12."))) {
+	if ((GetEngineVersion().ToString().substr(34, 4).find(_("11.")) != -1) ||
+		(GetEngineVersion().ToString().substr(34, 4).find(_("12.")) != -1)) {
 		PlayerController->Call(_("SwitchLevel"), FString(_(L"Apollo_Terrain")));
 	}
 	else

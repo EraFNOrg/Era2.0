@@ -19,11 +19,11 @@ public:
 	static void RemoveNetDebugUI();
 	static void TeleportToSpawnIsland();
 	static void ConsoleKey();
-	static void Tick();
 	static void CheatScript(const char* script);
 	static void ServerHandlePickup(class UObject* Pickup);
 	static void FixBuildingFoundations();
 	static void Fixbus();
+	static void OnServerCreateBuildingActor();
 	static void SpawnPickup(class UObject* ItemDefinition, int Count, struct FVector Location);
 	static void GrantAbility(class UObject* Class);
 private:

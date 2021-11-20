@@ -6,7 +6,7 @@
 
 void Athena::SpawnPawn()
 {
-	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), FVector(0,0,5000));
+	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), FVector(0,0,5000), FRotator(0,0,0));
 	PlayerController->Call(_("Possess"), Pawn);
 }
 
@@ -59,8 +59,12 @@ void Athena::DropLoadingScreen()
 	if (auto MAP = &(GameState->Child<UObject*>(_("MinimapMaterial"))); !IsBadReadPtr(MAP)) (*MAP) = FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) ? FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) : FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena"));
 
 	//Playlist
-	auto PlayList = FindObject(_(L"/Game/Athena/Playlists/Playground/Playlist_Playground.Playlist_Playground"));
+	auto PlayList = FindObject(_(L"/Game/Athena/Playlists/Creative/Playlist_PlaygroundV2.Playlist_PlaygroundV2"));
+	if (!PlayList) PlayList = FindObject(_(L"/Game/Athena/Playlists/Playground/Playlist_Playground.Playlist_Playground"));
 	if (PlayList) {
+		PlayList->Child<bool>(_("bIsLargeTeamGame")) = true;
+		if (auto HUDElementsToHide = &PlayList->Child<FGameplayTagContainer>(_("HUDElementsToHide")); !IsBadReadPtr(HUDElementsToHide)) HUDElementsToHide->GameplayTags.Add(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"HUD.Athena.PlayersLeft"))));
+
 		if (auto BasePlaylist = &GameState->Child<UObject*>(_("BasePlaylist")); !IsBadReadPtr(BasePlaylist)) *BasePlaylist = PlayList;
 		if (auto OverridePlaylist = &GameState->Child<UObject*>(_("OverridePlaylist")); !IsBadReadPtr(OverridePlaylist)) *OverridePlaylist = PlayList;
 		if (auto CurrentPlaylistData = &GameState->Child<UObject*>(_("CurrentPlaylistData")); !IsBadReadPtr(CurrentPlaylistData)) *CurrentPlaylistData = PlayList;
@@ -137,7 +141,7 @@ void Athena::InitializeInventory()
 
 	if (auto QB = &PlayerController->Child(_("ClientQuickBars")); !IsBadReadPtr(QB)) Quickbars = *QB;
 	else {
-		Quickbars = Core::SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortQuickBars")), FVector(0, 0, 0));
+		Quickbars = Core::SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortQuickBars")), FVector(0, 0, 0), FRotator(0,0,0));
 		PlayerController->Child(_("QuickBars")) = Quickbars;
 	}
 
@@ -197,19 +201,6 @@ void Athena::ConsoleKey()
 	FindObject(_(L"/Script/Engine.Default__InputSettings"))->Child<TArray<FKey>>(_("ConsoleKeys"))[1] = F2Key;
 }
 
-void Athena::Tick()
-{
-	static FKey BuildingKey = GetKeyFromAction(_("BuildConfirm"));
-
-	if (PlayerController->Call<bool>(_("IsInBuildMode")))
-	{
-		if (PlayerController->Call<bool>(_("IsInputKeyDown"), BuildingKey))
-		{
-		}
-	}
-
-}
-
 void Athena::CheatScript(const char* script)
 {
 	string ScriptFullName = string(script);
@@ -218,7 +209,7 @@ void Athena::CheatScript(const char* script)
 
 	if (ScriptFullName.find(_("spawnrift")) != -1)
 	{
-		if (!Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/Items/Consumables/RiftItem/BGA_RiftPortal_Item_Athena.BGA_RiftPortal_Item_Athena_C")), Pawn->Call<FVector>(_("K2_GetActorLocation"))))
+		if (!Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/Items/Consumables/RiftItem/BGA_RiftPortal_Item_Athena.BGA_RiftPortal_Item_Athena_C")), Pawn->Call<FVector>(_("K2_GetActorLocation")), FRotator(0, 0, 0)))
 			GameMode->Call(_("Say"), FString(_(L"Rifts arent in-game on the version of fortnite you are currently using.")));
 	}
 	else if (ScriptFullName.find(_("spawnweapon")) != -1)
@@ -267,13 +258,24 @@ void Athena::ServerHandlePickup(UObject* Pickup)
 {
 	UObject* ItemDefinition = Pickup->Child(_("ItemDefinition"));
 	int Count = Pickup->Child<int>(_("Count"));
+
+	auto InventoryContext = FindObject(_(L"/Script/BlueprintContext.Default__BlueprintContextLibrary"))->Call<UObject*>(_("GetContext"), GameViewportClient->Child(_("GameInstance"))->Child<TArray<UObject*>>(_("LocalPlayers"))[0], FindObject(_(L"/Script/FortniteUI.FortInventoryContext")));
+
+	for (int i = 0; i < 6; ++i)
+	{
+		if (!InventoryContext->Call<UObject*>(_("GetQuickBarSlottedItem"), char(0), i)) {
+			AddToInventory(ItemDefinition, Count, char(0), i);
+			Pickup->Call(_("K2_DestroyActor"));
+			break;
+		}
+	}
 }
 
 void Athena::FixBuildingFoundations()
 {
-	if (!GetEngineVersion().ToString().substr(34, 4).starts_with(_("6.")) &&
-		!GetEngineVersion().ToString().substr(34, 4).starts_with(_("7.")) &&
-		!GetEngineVersion().ToString().substr(34, 4).starts_with(_("8."))) return;
+	if ((GetEngineVersion().ToString().substr(34, 4).find(_("6.")) == -1) &&
+		(GetEngineVersion().ToString().substr(34, 4).find(_("7.")) == -1) &&
+		(GetEngineVersion().ToString().substr(34, 4).find(_("8.")) == -1)) return;
 
 	auto Array = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), GameViewportClient->Child(_("World")), FindObject(_(L"/Script/FortniteGame.BuildingFoundation")), TArray<UObject*>());
 	
@@ -287,12 +289,12 @@ void Athena::Fixbus()
 {
 	string FNVersion = GetEngineVersion().ToString().substr(34, 4);
 
-	if (FNVersion.starts_with(_("4.2")) ||
-		FNVersion.starts_with(_("8.")) ||
-		FNVersion.starts_with(_("9.")) ||
-		FNVersion.starts_with(_("10.")) ||
-		FNVersion.starts_with(_("11.")) ||
-		GetEngineVersion().ToString().substr(35, 4).starts_with(_("12."))) {
+	if ((FNVersion.find(_("4.2")) != -1) ||
+		(FNVersion.find(_("8.")) != -1) ||
+		(FNVersion.find(_("9.")) != -1) ||
+		(FNVersion.find(_("10.")) != -1) ||
+		(FNVersion.find(_("11.")) != -1) ||
+		(FNVersion.find(_("12.")) != -1)) {
 		GameState->Child<char>(_("GamePhase")) = 3;
 		GameState->Call(_("OnRep_GamePhase"), char(2));
 
@@ -303,9 +305,16 @@ void Athena::Fixbus()
 	}
 }
 
+void Athena::OnServerCreateBuildingActor()
+{
+	auto BuildingActor = Core::SpawnActorEasy(PlayerController->Child(_("CurrentBuildableClass")), PlayerController->Child<FVector>(_("LastBuildPreviewGridSnapLoc")), PlayerController->Child<FRotator>(_("LastBuildPreviewGridSnapRot")));
+	if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController, true);
+	else BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController);
+}
+
 void Athena::SpawnPickup(UObject* ItemDefinition, int Count, FVector Location)
 {
-	auto Pickup = Core::SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortPickupAthena")), Location);
+	auto Pickup = Core::SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortPickupAthena")), Location, FRotator(0,0,0));
 
 	Pickup->Child(_("ItemDefinition")) = ItemDefinition;
 	Pickup->Child<int>(_("Count")) = Count;
@@ -343,7 +352,7 @@ void Athena::OnAircraftJump()
 {
 	auto Location = PlayerController->Call<FVector>(_("GetFocalLocation")); 
 
-	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), Location );
+	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), Location, FRotator(0,0,0));
 
 	PlayerController->Call(_("Possess"), Pawn);
 

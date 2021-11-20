@@ -16,9 +16,15 @@ typedef unsigned __int16 uint16;
 typedef unsigned __int32 uint32;
 typedef unsigned __int64 uint64;
 
+struct SpawnActorParams
+{
+	unsigned char Parms[0x40];
+};
+
 inline void* (*PE)(class UObject* Object, class UObject* Function, PVOID Params) = nullptr;
 inline class UObject* (*StaticFindObject)(class UObject* Class, void* Outer, const wchar_t* Name, bool ExactClass);
 inline void* (*Realloc)(void* Block, SIZE_T NewSize, uint32 Alignment);
+inline class UObject* (*SpawnActor)(class UObject* World, class UObject* Class, struct FVector* Location, struct FRotator* Rotation, const SpawnActorParams& Params);
 inline struct FString (*GetEngineVersion)();
 inline class UObject* PlayerController;
 inline class UObject* GameMode;
