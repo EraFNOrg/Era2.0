@@ -228,6 +228,7 @@ void Athena::CheatScript(const char* script)
 		auto CattusDoggus = FindObject(_(L"/Game/Athena/Maps/Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.BP_CattusDoggus_Scripting_2"));
 		auto NightNight = FindObject(_(L"/Game/Athena/Maps/Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.BP_NightNight_Scripting_2"));
 		auto RocketEvent = FindObject(_(L"Athena_Gameplay_Geode.PersistentLevel.LevelSequence_LaunchRocket.AnimationPlayer"));
+		auto CycloneJerky = FindObjectFromGObj(_("/CycloneJerky/Levels/JerkyLoaderLevel.JerkyLoaderLevel.PersistentLevel.BP_Jerky_Loader_2"));
 
 		if (CattusDoggus)
 		{
@@ -249,6 +250,13 @@ void Athena::CheatScript(const char* script)
 
 			bEventStarted = !bEventStarted;
 		}
+		else if (CycloneJerky)
+		{
+			CycloneJerky->Call<bool>(_("LoadJerkyLevel"));
+			CycloneJerky->Call(_("startevent"));
+
+			bEventStarted = !bEventStarted;
+		}
 
 		if (bEventStarted) GameMode->Call(_("Say"), FString(_(L"The event started successfully. Enjoy!")));
 	}
@@ -265,6 +273,7 @@ void Athena::ServerHandlePickup(UObject* Pickup)
 	{
 		if (!InventoryContext->Call<UObject*>(_("GetQuickBarSlottedItem"), char(0), i)) {
 			AddToInventory(ItemDefinition, Count, char(0), i);
+			Athena::InventoryUpdate();
 			Pickup->Call(_("K2_DestroyActor"));
 			break;
 		}

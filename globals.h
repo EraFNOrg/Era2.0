@@ -26,6 +26,7 @@ inline class UObject* (*StaticFindObject)(class UObject* Class, void* Outer, con
 inline void* (*Realloc)(void* Block, SIZE_T NewSize, uint32 Alignment);
 inline class UObject* (*SpawnActor)(class UObject* World, class UObject* Class, struct FVector* Location, struct FRotator* Rotation, const SpawnActorParams& Params);
 inline struct FString (*GetEngineVersion)();
+inline struct GObjects* GObjectArray;
 inline class UObject* PlayerController;
 inline class UObject* GameMode;
 inline class UObject* UEngine;

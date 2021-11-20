@@ -185,14 +185,7 @@ public:
 
 	string GetName()
 	{
-		string name = Name.ToString();
-		auto pos = name.rfind('/');
-		if (pos == std::string::npos)
-		{
-			return name;
-		}
-
-		return name.substr(pos + 1);
+		return Name.ToString();
 	}
 
 	string GetFullName()
@@ -503,10 +496,114 @@ struct FGameplayTagContainer
 	TArray<FName> ParentTags;
 };
 
+class FUObjectItem
+{
+public:
+	UObject* Object;
+	int32_t Flags;
+	int32_t ClusterIndex;
+	int32_t SerialNumber;
+};
+
+struct TUObjectArrayNew
+{
+	FUObjectItem* Objects[9];
+};
+
+struct GObjects
+{
+	TUObjectArrayNew* ObjectArray;
+	BYTE _padding_0[0xC];
+	DWORD ObjectCount;
+
+	inline void NumChunks(int* start, int* end)
+	{
+		int cStart = 0, cEnd = 0;
+
+		if (!cEnd)
+		{
+			while (1)
+			{
+				if (this->ObjectArray->Objects[cStart] == 0)
+				{
+					cStart++;
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			cEnd = cStart;
+			while (1)
+			{
+				if (this->ObjectArray->Objects[cEnd] == 0)
+				{
+					break;
+				}
+				else
+				{
+					cEnd++;
+				}
+			}
+		}
+
+		*start = cStart;
+		*end = cEnd;
+	}
+
+	UObject* FindObjectById(uint32_t Id)
+	{
+		// we are on ue 4.21+
+		int cStart = 0, cEnd = 0;
+		int chunkIndex = 0, chunkSize = 0xFFFF, chunkPos;
+		FUObjectItem* Object;
+
+		this->NumChunks(&cStart, &cEnd);
+
+		chunkIndex = Id / chunkSize;
+		if (chunkSize * chunkIndex != 0 &&
+			chunkSize * chunkIndex == Id)
+		{
+			chunkIndex--;
+		}
+
+		chunkPos = cStart + chunkIndex;
+		if (chunkPos < cEnd)
+		{
+			Object = this->ObjectArray->Objects[chunkPos] + (Id - chunkSize * chunkIndex);
+
+			if (!Object) { return NULL; }
+
+			return Object->Object;
+		}
+
+		return nullptr;
+	}
+};
+
 //Functions
 inline UObject* FindObject(const wchar_t* Name)
 {
 	return StaticFindObject(nullptr, nullptr, Name, false);
+}
+
+inline UObject* FindObjectFromGObj(string Name)
+{
+	for (int i = 0; i < GObjectArray->ObjectCount; ++i)
+	{
+		UObject* object = GObjectArray->FindObjectById(i);
+		if (object == nullptr)
+		{
+			continue;
+		}
+		std::string objectName = object->GetFullName();
+		if (objectName.find(Name) != std::string::npos)
+		{
+			return object;
+		}
+	}
+	return nullptr;
 }
 
 inline FKey GetKeyFromAction(string ActionName)

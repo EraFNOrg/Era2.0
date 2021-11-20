@@ -29,6 +29,8 @@ void Core::Setup()
 
 	SpawnActor = decltype(SpawnActor)(FindPattern(_("40 53 56 57 48 83 EC 70 48 8B 05 ? ? ? ? 48 33 C4 48 89 44 24 ? 0F 28 1D ? ? ? ? 0F 57 D2 48 8B B4 24 ? ? ? ? 0F 28 CB")));
 	
+	GObjectArray = decltype(GObjectArray)(FindPattern(_("49 63 C8 48 8D 14 40 48 8B 05 ? ? ? ? 48 8B 0C C8 48 8D 04 D1"), true, 10));
+
 	//This is the fix to arrays behaving "bad", such as causing crashes when attempting to go back to lobby
 	//or freezing the game when adding to inventory in S9+ 
 	Realloc = decltype(Realloc)(FindPattern(_("E8 ? ? ? ? 48 89 03 48 8B 5C 24 ? 48 83 C4 20"), true, 1));
