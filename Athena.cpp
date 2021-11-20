@@ -280,7 +280,6 @@ void Athena::FixBuildingFoundations()
 	auto Array = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), GameViewportClient->Child(_("World")), FindObject(_(L"/Script/FortniteGame.BuildingFoundation")), TArray<UObject*>());
 	
 	for (UObject* CurrentBuilding : Array) {
-		if (CurrentBuilding->Child<char>(_("DynamicFoundationType")) == char(2))
 			CurrentBuilding->Child<char>(_("DynamicFoundationType")) = char(0);
 	}
 }
