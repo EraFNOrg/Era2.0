@@ -3,6 +3,7 @@
 #include "redirect.h"
 #include "sdk.h"
 #include "core.h"
+#include "peh.h"
 
 void Athena::SpawnPawn()
 {
@@ -157,6 +158,8 @@ void Athena::InitializeInventory()
 	AddToInventory(StartingItems[3].Item, 1, char(1), 3);
 	AddToInventory(StartingItems[5].Item, 999, char(3), 0);
 	
+	EditToolItem = StartingItems[4].Item->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), 1, 1);
+
 	Athena::InventoryUpdate();
 }
 
@@ -318,6 +321,29 @@ void Athena::OnServerCreateBuildingActor()
 	auto BuildingActor = Core::SpawnActorEasy(PlayerController->Child(_("CurrentBuildableClass")), PlayerController->Child<FVector>(_("LastBuildPreviewGridSnapLoc")), PlayerController->Child<FRotator>(_("LastBuildPreviewGridSnapRot")));
 	if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController, true);
 	else BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController);
+}
+
+void Athena::OnBeginEditActor(UObject* BuildingPiece)
+{
+	//TODO: FIX S9
+	auto WeaponEditActor = Pawn->Call<UObject*>(_("EquipWeaponDefinition"), EditToolItem->Call<UObject*>(_("GetItemDefinitionBP")), EditToolItem->Call<FGuid>(_("GetItemGuid")));
+
+	WeaponEditActor->Child(_("EditActor")) = BuildingPiece;
+	WeaponEditActor->Call(_("OnRep_EditActor"));
+}
+
+void Athena::OnFinishEditActor(UObject* BuildingActor, UObject* NewClass, int RotationIteration, bool bMirrored)
+{
+	BuildingActor->Child<bool>(_("bPlayDestructionEffects")) = false;
+
+	BuildingActor->Call(_("SetActorScale3D"), FVector(0, 0, 0));
+	BuildingActor->Call(_("K2_DestroyActor"));
+
+	auto EditedActor = Core::SpawnActorEasy(NewClass, EditComponentLocation, EditComponentRotation);
+	EditedActor->Call(_("SetMirrored"), bMirrored);
+
+	if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) EditedActor->Call(_("InitializeKismetSpawnedBuildingActor"), EditedActor, PlayerController, true);
+	else EditedActor->Call(_("InitializeKismetSpawnedBuildingActor"), EditedActor, PlayerController);
 }
 
 void Athena::SpawnPickup(UObject* ItemDefinition, int Count, FVector Location)

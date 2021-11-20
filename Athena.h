@@ -24,6 +24,8 @@ public:
 	static void FixBuildingFoundations();
 	static void Fixbus();
 	static void OnServerCreateBuildingActor();
+	static void OnBeginEditActor(class UObject* BuildingPiece);
+	static void OnFinishEditActor(class UObject* BuildingActor, class UObject* NewClass, int RotationIteration, bool bMirrored);
 	static void SpawnPickup(class UObject* ItemDefinition, int Count, struct FVector Location);
 	static void GrantAbility(class UObject* Class);
 private:

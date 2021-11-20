@@ -42,6 +42,7 @@ inline class UObject* kismetMathLib;
 inline class UObject* kismetGuidLib;
 inline class UObject* kismetStringLib;
 inline class UObject* WorldSettings;
+inline class UObject* EditToolItem;
 inline vector<class UObject*> CharacterPartsArray;
 inline bool bLoadedInMatch = false;
 inline bool bDroppedFromAircraft = false;

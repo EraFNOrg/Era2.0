@@ -590,6 +590,8 @@ inline UObject* FindObject(const wchar_t* Name)
 
 inline UObject* FindObjectFromGObj(string Name)
 {
+	if (!GObjectArray) return nullptr;
+
 	for (int i = 0; i < GObjectArray->ObjectCount; ++i)
 	{
 		UObject* object = GObjectArray->FindObjectById(i);
