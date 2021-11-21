@@ -83,6 +83,7 @@ void Core::Setup()
 		offsets::ReturnValueOffset = 0x90;
 		offsets::SuperClass = 0x30;
 		offsets::StructSize = 0x40;
+		offsets::BoolPropertyFieldMask = 0x84;
 		break;
 	}
 	case 421: {

@@ -5,7 +5,7 @@
 
 void Main()
 {
-    Core::Setup();
+  Core::Setup();
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,

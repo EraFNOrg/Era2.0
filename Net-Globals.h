@@ -26,6 +26,21 @@ namespace Net
 		inline UObject* (*ConnectionFindActorChannelRef)(UObject*, const TSharedRef<UObject*>&);
 		inline void (*ControllerSendClientAdjustment)(UObject*);
 		inline bool (*ActorIsNetRelevantFor)(UObject*, const UObject*, const UObject*, const FVector&);
+		inline void (*ActorForceNetUpdate)(UObject*);
+		inline int64(*ActorChanelClose)(UObject*);
+
+		inline static auto IsActorRelevantToConnection = [](UObject* Actor, const TArray<FNetViewer>& ConnectionViewers)
+		{
+			for (int32 viewerIdx = 0; viewerIdx < ConnectionViewers.Num(); viewerIdx++)
+			{
+				if (Globals::ActorIsNetRelevantFor(Actor, ConnectionViewers[viewerIdx].InViewer, ConnectionViewers[viewerIdx].ViewTarget, ConnectionViewers[viewerIdx].ViewLocation))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		};
 
 		bool Init()
 		{
@@ -38,10 +53,12 @@ namespace Net
 			ConnectionFindActorChannelRef = decltype(ConnectionFindActorChannelRef)(FindPattern(_("Some Pattern")));
 			ControllerSendClientAdjustment = decltype(ControllerSendClientAdjustment)(FindPattern(_("Some Pattern")));
 			ActorIsNetRelevantFor = decltype(ActorIsNetRelevantFor)(FindPattern(_("Some Pattern")));
+			ActorForceNetUpdate = decltype(ActorForceNetUpdate)(FindPattern(_("Some Pattern")));
+			ActorChanelClose = decltype(ActorChanelClose)(FindPattern(_("Some Pattern")));
 
 			if (ActorCallPreReplication && ActorIsNetStartupActor && RemoveNetworkActor && ActorGetNetPriority
 				&& ActorChannelReplicateActor && EngineGetMaxTickRate && ConnectionFindActorChannelRef
-				&& ControllerSendClientAdjustment && ActorIsNetRelevantFor)
+				&& ControllerSendClientAdjustment && ActorIsNetRelevantFor && ActorForceNetUpdate && ActorChanelClose)
 			{
 				return true;
 			}

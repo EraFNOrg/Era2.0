@@ -47,6 +47,8 @@ namespace offsets
 	inline int32 ParamsSize;
 	inline int32 ReturnValueOffset;
 	inline int32 StructSize;
+
+	inline int32 BoolPropertyFieldMask;
 }
 
 #define _(STR) xorstr(STR).crypt_get()

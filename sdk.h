@@ -33,7 +33,7 @@ public:
 	}
 	inline void Reserve(const int NumElements)
 	{
-		data = Slack() >= NumElements ? data : Realloc(data, (max = count + NumElements) * sizeof(ElementType), 0);
+		data = Slack() >= NumElements ? data : (ElementType*)Realloc(data, (max = count + NumElements) * sizeof(ElementType), 0);
 	}
 	inline void Reset(int MinSizeAfterReset = 0)
 	{
@@ -49,7 +49,7 @@ public:
 	}
 	void Add(ElementType InputData...)
 	{
-		int num = sizeof...(InputData) / sizeof(ElementType);
+		int num = sizeof(InputData) / sizeof(ElementType);
 
 		Reserve(num);
 		data[count] = InputData;
@@ -178,11 +178,6 @@ struct FName
 	uint32_t ComparisonIndex;
 	uint32_t DisplayIndex;
 
-	FName(const wchar_t* Name)
-	{
-		*this = kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(Name));
-	}
-
 	string ToString()
 	{
 		FString temp;
@@ -247,12 +242,12 @@ public:
 
 		return temp;
 	}
-
+	
 	template<typename T = UObject*>
 	T& Child(string name)
 	{
 		auto Class = this->Class;
-		
+
 		while (true)
 		{
 			if (!Class) break;
@@ -495,7 +490,7 @@ struct FKey
 
 	FKey() {}
 	FKey(const wchar_t* Name) {
-		KeyName = FName(Name);
+		KeyName = kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(Name));
 	}
 	FKey(FName Name) {
 		KeyName = Name;
@@ -512,11 +507,7 @@ struct KeyMap
 //Functions
 inline UObject* FindObject(const wchar_t* Name)
 {
-	auto ReturnValue = StaticFindObject(nullptr, nullptr, Name, false);
-	
-	if (ReturnValue) return ReturnValue;
-
-	return nullptr;
+	return StaticFindObject(nullptr, nullptr, Name, false);
 }
 
 inline FKey GetKeyFromAction(string ActionName)

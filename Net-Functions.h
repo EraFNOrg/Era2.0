@@ -226,7 +226,7 @@ namespace Net
 						continue;
 					}
 
-					if (!IsActorRelevantToConnection(Actor, ConnectionViewers))
+					if (!Globals::IsActorRelevantToConnection(Actor, ConnectionViewers))
 					{
 						continue;
 					}
@@ -365,7 +365,7 @@ namespace Net
 				{
 					if (!Actor->GetTearOff() && (!Channel || Driver->Child<float>(_("Time")) - Channel->RelevantTime > 1.f))
 					{
-						if (IsActorRelevantToConnection(Actor, ConnectionViewers))
+						if (Globals::IsActorRelevantToConnection(Actor, ConnectionViewers))
 						{
 							bIsRelevant = true;
 						}
@@ -395,7 +395,7 @@ namespace Net
 					// we can't create the channel if the client is in a different world than we are
 					// or the package map doesn't support the actor's class/archetype (or the actor itself in the case of serializable actors)
 					// or it's an editor placed actor and the client hasn't initialized the level it's in
-					if (Channel == NULL && GuidCache->SupportsObject(Actor->GetClass()) && GuidCache->SupportsObject(Actor->IsNetStartupActor() ? Actor : Actor->GetArchetype()))
+					if (Channel == NULL && GuidCache->SupportsObject(Actor->Class) && GuidCache->SupportsObject(Actor->IsNetStartupActor() ? Actor : Actor->GetArchetype()))
 					{
 						if (bLevelInitializedForActor)
 						{
@@ -454,7 +454,7 @@ namespace Net
 						else
 						{
 							// otherwise force this actor to be considered in the next tick again
-							Actor->ForceNetUpdate();
+							Globals::ActorForceNetUpdate(Actor);
 						}
 						// second check for channel saturation
 						if (!Connection->IsNetReady(0))
@@ -472,10 +472,10 @@ namespace Net
 					// Non startup (map) actors have their channels closed immediately, which destroys them.
 					// Startup actors get to keep their channels open.
 
-					// Fixme: this should be a setting
-					if (!bLevelInitializedForActor || !Actor->IsNetStartupActor())
+					// Fixme: this should be a setting 
+					if (!bLevelInitializedForActor || !Actor->Child<>("hi").c1)
 					{
-						Channel->Close();
+						Globals::ActorChanelClose(Channel);
 					}
 				}
 			}
@@ -643,24 +643,13 @@ namespace Net
 
 					UObject* Channel = PriorityActors[k]->Channel;
 
-					static auto IsActorRelevantToConnection = [](UObject* Actor, const TArray<FNetViewer>& ConnectionViewers)
-					{
-						for (int32 viewerIdx = 0; viewerIdx < ConnectionViewers.Num(); viewerIdx++)
-						{
-							if (Globals::ActorIsNetRelevantFor(Actor, ConnectionViewers[viewerIdx].InViewer, ConnectionViewers[viewerIdx].ViewTarget, ConnectionViewers[viewerIdx].ViewLocation))
-							{
-								return true;
-							}
-						}
-
-						return false;
-					};
+					
 
 					if (Channel != NULL && Driver->Child<float>(_("Time")) - Channel->RelevantTime <= 1.f)
 					{
 						PriorityActors[k]->ActorInfo->bPendingNetUpdate = true;
 					}
-					else if (IsActorRelevantToConnection(Actor, ConnectionViewers))
+					else if (Globals::IsActorRelevantToConnection(Actor, ConnectionViewers))
 					{
 						// If this actor was relevant but didn't get processed, force another update for next frame
 						PriorityActors[k]->ActorInfo->bPendingNetUpdate = true;
