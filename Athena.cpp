@@ -94,6 +94,8 @@ void Athena::AddToInventory(class UObject* item, int Count, char Index, int Slot
 	auto ItemInstance = item->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), Count, 1);
 	WorldInventory->Child<TArray<UObject*>>(_("ItemInstances")).Add(ItemInstance);
 
+	ItemInstance->Call(_("SetOwningControllerForTemporaryItem"), PlayerController);
+
 	switch (Size)
 	{
 	case 0xA8: {
@@ -157,9 +159,14 @@ void Athena::InitializeInventory()
 	AddToInventory(StartingItems[2].Item, 1, char(1), 2);
 	AddToInventory(StartingItems[3].Item, 1, char(1), 3);
 	AddToInventory(StartingItems[5].Item, 999, char(3), 0);
+	AddToInventory(FindObject(_(L"/Game/Athena/Items/Ammo/AthenaAmmoDataShells.AthenaAmmoDataShells")), 999, char(3), 0);
+	AddToInventory(FindObject(_(L"/Game/Athena/Items/Ammo/AthenaAmmoDataBulletsMedium.AthenaAmmoDataBulletsMedium")), 999, char(3), 0);
+	AddToInventory(FindObject(_(L"/Game/Athena/Items/Ammo/AthenaAmmoDataBulletsLight.AthenaAmmoDataBulletsLight")), 999, char(3), 0);
+	AddToInventory(FindObject(_(L"/Game/Athena/Items/Ammo/AthenaAmmoDataBulletsHeavy.AthenaAmmoDataBulletsHeavy")), 999, char(3), 0);
+	AddToInventory(FindObject(_(L"/Game/Athena/Items/Ammo/AmmoDataRockets.AmmoDataRockets")), 999, char(3), 0);
 	
-	EditToolItem = StartingItems[4].Item->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), 1, 1);
-
+	EditToolItem = StartingItems[4].Item;
+	
 	Athena::InventoryUpdate();
 }
 
@@ -325,8 +332,7 @@ void Athena::OnServerCreateBuildingActor()
 
 void Athena::OnBeginEditActor(UObject* BuildingPiece)
 {
-	//TODO: FIX S9
-	auto WeaponEditActor = Pawn->Call<UObject*>(_("EquipWeaponDefinition"), EditToolItem->Call<UObject*>(_("GetItemDefinitionBP")), EditToolItem->Call<FGuid>(_("GetItemGuid")));
+	auto WeaponEditActor = Pawn->Call<UObject*>(_("EquipWeaponDefinition"), EditToolItem, EditToolItem->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), 1, 1)->Call<FGuid>(_("GetItemGuid")));
 
 	WeaponEditActor->Child(_("EditActor")) = BuildingPiece;
 	WeaponEditActor->Call(_("OnRep_EditActor"));
@@ -385,8 +391,11 @@ void Athena::GrantDefaultAbilities()
 void Athena::OnAircraftJump()
 {
 	auto Location = PlayerController->Call<FVector>(_("GetFocalLocation")); 
+	auto Rotation = PlayerController->Call<FRotator>(_("GetControlRotation")); 
+	Rotation.Pitch = 0;
+	Rotation.Roll = 0;
 
-	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), Location, FRotator(0,0,0));
+	Pawn = Core::SpawnActorEasy(FindObject(_(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")), Location, Rotation);
 
 	PlayerController->Call(_("Possess"), Pawn);
 
