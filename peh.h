@@ -77,6 +77,10 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	{
 		Athena::CheatScript(((FString*)Params)->ToString().c_str());
 	}
+	else if (FuncName.find(_("OnDamagePlayEffects")) != -1)
+	{
+		//Scuff Athena::Farming(Object);
+	}
 	else if (FuncName.find(_("ReturnToMainMenu")) != -1)
 	{
 		PlayerController->Call(_("SwitchLevel"), FString(_(L"Frontend")));

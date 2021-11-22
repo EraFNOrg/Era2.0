@@ -164,6 +164,8 @@ void Athena::InitializeInventory()
 	AddToInventory(FindObject(_(L"/Game/Athena/Items/Ammo/AthenaAmmoDataBulletsLight.AthenaAmmoDataBulletsLight")), 999, char(3), 0);
 	AddToInventory(FindObject(_(L"/Game/Athena/Items/Ammo/AthenaAmmoDataBulletsHeavy.AthenaAmmoDataBulletsHeavy")), 999, char(3), 0);
 	AddToInventory(FindObject(_(L"/Game/Athena/Items/Ammo/AmmoDataRockets.AmmoDataRockets")), 999, char(3), 0);
+	AddToInventory(FindObject(_(L"/Game/Athena/Items/Traps/TID_Floor_Player_Launch_Pad_Athena.TID_Floor_Player_Launch_Pad_Athena")), 1, char(3), 0);
+	AddToInventory(FindObject(_(L"/Game/Athena/Items/Traps/TID_Floor_Spikes_Athena_R_T03.TID_Floor_Spikes_Athena_R_T03")), 1, char(3), 0);
 	
 	EditToolItem = StartingItems[4].Item;
 	
@@ -174,8 +176,16 @@ void Athena::OnServerExecuteInventoryItem(FGuid ItemGuid)
 {
 	auto Instances = WorldInventory->Child<TArray<UObject*>>(_("ItemInstances"));
 	for (UObject* Instance : Instances) {
-		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instance->Call<FGuid>(_("GetItemGuid")), ItemGuid))
-			Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Instance->Call<UObject*>(_("GetItemDefinitionBP")), Instance->Call<FGuid>(_("GetItemGuid")));
+		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instance->Call<FGuid>(_("GetItemGuid")), ItemGuid)) {
+			auto CurrentItemDefinition = Instance->Call<UObject*>(_("GetItemDefinitionBP"));
+
+			if (CurrentItemDefinition->IsA(FindObject(_(L"/Script/FortniteGame.FortTrapItemDefinition"))))
+			{
+				Pawn->Call<bool>(_("PickUpActor"), nullptr, CurrentItemDefinition);
+				Pawn->Child(_("CurrentWeapon"))->Child<FGuid>(_("ItemEntryGuid")) = Instance->Call<FGuid>(_("GetItemGuid"));
+			}
+			else Pawn->Call<UObject*>(_("EquipWeaponDefinition"), CurrentItemDefinition, Instance->Call<FGuid>(_("GetItemGuid")));
+		}
 	}
 }
 
@@ -328,6 +338,15 @@ void Athena::OnServerCreateBuildingActor()
 	auto BuildingActor = Core::SpawnActorEasy(PlayerController->Child(_("CurrentBuildableClass")), PlayerController->Child<FVector>(_("LastBuildPreviewGridSnapLoc")), PlayerController->Child<FRotator>(_("LastBuildPreviewGridSnapRot")));
 	if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController, true);
 	else BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController);
+}
+
+void Athena::Farming(UObject* BuildingPiece)
+{
+	//NOT WORKING ON ALL THE VERSIONS
+	static UObject* InventoryContext = FindObject(_(L"/Script/BlueprintContext.Default__BlueprintContextLibrary"))->Call<UObject*>(_("GetContext"), GameViewportClient->Child(_("GameInstance"))->Child<TArray<UObject*>>(_("LocalPlayers"))[0], FindObject(_(L"/Script/FortniteUI.FortInventoryContext")));
+
+	FindObject(_(L"/Script/UMG.Default__WidgetBlueprintLibrary"))->Call<TArray<UObject*>, 0x8>(_("GetAllWidgetsOfClass"), World, TArray<UObject*>(), FindObject(_(L"/Game/UI/InGame/HUD/Resources/ResourceAggregationWidget.ResourceAggregationWidget_C")), false)[0]
+		->Call(_("HandleDamagedResourceObject"), BuildingPiece, InventoryContext->Call<UObject*>(_("GetResourceItemDefinition"), BuildingPiece->Child<char>(_("ResourceType")))->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), 1, 1), false, false);
 }
 
 void Athena::OnBeginEditActor(UObject* BuildingPiece)

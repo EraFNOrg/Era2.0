@@ -179,8 +179,7 @@ public:
 
 	bool IsA(UObject* _Class)
 	{
-		if (_Class == this->Class) return true;
-		else return false;
+		return this->Class == _Class;
 	}
 
 	string GetName()
