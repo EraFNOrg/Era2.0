@@ -186,7 +186,6 @@ void Core::PlayButton()
 	}
 
 	bPressedPlay = !bPressedPlay;
-	bInFrontend = !bInFrontend;
 }
 
 
@@ -194,6 +193,7 @@ void Core::PlayButton()
 void Core::OnReadyToStartMatch()
 {
 	bLoadedInMatch = true;
+	bInFrontend = !bInFrontend;
 	Core::InitializeGlobals();
 	Athena::SpawnPawn();
 	Athena::ShowSkin();

@@ -399,7 +399,9 @@ void Athena::OnFinishEditActor(UObject* BuildingActor, UObject* NewClass, int Ro
 	BuildingActor->Call(_("K2_DestroyActor"));
 
 	auto EditedActor = Core::SpawnActorEasy(NewClass, EditComponentLocation, EditComponentRotation);
-	if (FindObject(_(L"/Script/FortniteGame.BuildingSMActor.SetMirrored"))->GetFunctionChildrenOffset()[3] != 0x14) EditedActor->Call(_("SetMirrored"), FixedParamsInstance.bMirrored);
+	auto Offset = FindObject(_(L"/Script/FortniteGame.BuildingSMActor.SetMirrored"))->GetFunctionChildrenOffset()[3];
+	if (Offset != 0x14 && Offset > -1)
+		EditedActor->Call(_("SetMirrored"), FixedParamsInstance.bMirrored);
 	else EditedActor->Call(_("SetMirrored"), bMirrored);
 
 	if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) EditedActor->Call(_("InitializeKismetSpawnedBuildingActor"), EditedActor, PlayerController, true);
