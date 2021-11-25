@@ -23,7 +23,7 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	}
 	else if (FuncName.find(_("ServerCreateBuildingActor")) != -1)
 	{
-		Athena::OnServerCreateBuildingActor();
+		Athena::OnServerCreateBuildingActor(Params);
 	}
 	else if (FuncName.find(_("ServerBeginEditingBuildingActor")) != -1)
 	{
@@ -52,7 +52,7 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 
 		auto ParamsInstance = *(ParamsStruct*)(Params);
 
-		Athena::OnFinishEditActor(ParamsInstance.BuildingActor, ParamsInstance.NewClass, ParamsInstance.RotationIteration, ParamsInstance.bMirrored);
+		Athena::OnFinishEditActor(ParamsInstance.BuildingActor, ParamsInstance.NewClass, ParamsInstance.RotationIteration, ParamsInstance.bMirrored, Params);
 	}
 	else if (FuncName.find(_("ServerLoadingScreenDropped")) != -1 &&
 		bLoadedInMatch)
@@ -77,9 +77,9 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	{
 		Athena::CheatScript(((FString*)Params)->ToString().c_str());
 	}
-	else if (FuncName.find(_("OnDamagePlayEffects")) != -1)
+	else if (FuncName.find(_("ServerAttemptInteract")) != -1)
 	{
-		//Scuff Athena::Farming(Object);
+
 	}
 	else if (FuncName.find(_("ReturnToMainMenu")) != -1)
 	{

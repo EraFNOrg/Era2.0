@@ -112,7 +112,7 @@ void Core::InitializeHook()
 	printf(_("(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\n"));
 	printf(_("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\n\n"));
 
-	printf(_("Era 2.0 || Made by danii#2961\nBackend by Kyiro#7884\nLauncher by ozne#3303 and Not a Robot#6932\nSpecial Thanks to Sizzy, Kemo, Mix, Fischsalat!\n\nEnjoy!\n\n\n"));
+	printf(_("Era 2.0 || Made by danii#2961 & sizzy#1337\nBackend by Kyiro#7884\nLauncher by ozne#3303 and Not a Robot#6932\nSpecial Thanks to Kemo, Mix, Fischsalat!\n\nEnjoy!\n\n\n"));
 
 	FreeConsole();
 

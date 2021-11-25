@@ -55,8 +55,8 @@ void Athena::DropLoadingScreen()
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapSafeZoneBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("FullMapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
-	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush")).ObjectResource;
-	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
+	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = IsBadReadPtr(&WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush"))) ? nullptr : WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush")).ObjectResource;
+	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = IsBadReadPtr(&WorldSettings->Child<FSlateBrush>(_("AthenaMapImage"))) ? nullptr : WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
 	if (auto MAP = &(GameState->Child<UObject*>(_("MinimapMaterial"))); !IsBadReadPtr(MAP)) (*MAP) = FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) ? FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) : FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena"));
 
 	//Playlist
@@ -333,20 +333,44 @@ void Athena::Fixbus()
 	}
 }
 
-void Athena::OnServerCreateBuildingActor()
+void Athena::Loot()
 {
-	auto BuildingActor = Core::SpawnActorEasy(PlayerController->Child(_("CurrentBuildableClass")), PlayerController->Child<FVector>(_("LastBuildPreviewGridSnapLoc")), PlayerController->Child<FRotator>(_("LastBuildPreviewGridSnapRot")));
-	if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController, true);
-	else BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController);
+	//Basic looting impl
 }
 
-void Athena::Farming(UObject* BuildingPiece)
+void Athena::OnServerCreateBuildingActor(PVOID Params)
 {
-	//NOT WORKING ON ALL THE VERSIONS
-	static UObject* InventoryContext = FindObject(_(L"/Script/BlueprintContext.Default__BlueprintContextLibrary"))->Call<UObject*>(_("GetContext"), GameViewportClient->Child(_("GameInstance"))->Child<TArray<UObject*>>(_("LocalPlayers"))[0], FindObject(_(L"/Script/FortniteUI.FortInventoryContext")));
+	struct OriginalParams
+	{
+		UObject* Class;
+		char pad[0x8];
+		FVector BuildingLocation;
+		FRotator BuildingRotation;
+	};
 
-	FindObject(_(L"/Script/UMG.Default__WidgetBlueprintLibrary"))->Call<TArray<UObject*>, 0x8>(_("GetAllWidgetsOfClass"), World, TArray<UObject*>(), FindObject(_(L"/Game/UI/InGame/HUD/Resources/ResourceAggregationWidget.ResourceAggregationWidget_C")), false)[0]
-		->Call(_("HandleDamagedResourceObject"), BuildingPiece, InventoryContext->Call<UObject*>(_("GetResourceItemDefinition"), BuildingPiece->Child<char>(_("ResourceType")))->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), 1, 1), false, false);
+	struct NewParams
+	{
+		int ClassHandle;
+		FVector BuildingLocation;
+		FRotator BuildingRotation;
+		char pad[0xC];
+		UObject* Class;
+	};
+
+	if (FindObject(_(L"/Script/FortniteGame.FortPlayerController.ServerCreateBuildingActor"))->GetFunctionChildrenOffset().size() == 1)
+	{
+		auto IParams = *(NewParams*)(Params);
+		auto BuildingActor = Core::SpawnActorEasy(IParams.Class, IParams.BuildingLocation, IParams.BuildingRotation);
+		if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController, true);
+		else BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController);
+	}
+	else
+	{
+		auto IParams = *(OriginalParams*)(Params);
+		auto BuildingActor = Core::SpawnActorEasy(IParams.Class, IParams.BuildingLocation, IParams.BuildingRotation);
+		if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController, true);
+		else BuildingActor->Call(_("InitializeKismetSpawnedBuildingActor"), BuildingActor, PlayerController);
+	}
 }
 
 void Athena::OnBeginEditActor(UObject* BuildingPiece)
@@ -357,15 +381,26 @@ void Athena::OnBeginEditActor(UObject* BuildingPiece)
 	WeaponEditActor->Call(_("OnRep_EditActor"));
 }
 
-void Athena::OnFinishEditActor(UObject* BuildingActor, UObject* NewClass, int RotationIteration, bool bMirrored)
+void Athena::OnFinishEditActor(UObject* BuildingActor, UObject* NewClass, int RotationIteration, bool bMirrored, PVOID Params)
 {
+	struct FixedParams
+	{
+		UObject* BuildingActor;
+		UObject* NewClass;
+		int8 RotationIteration;
+		bool bMirrored;
+	};
+
+	auto FixedParamsInstance = *(FixedParams*)(Params);
+
 	BuildingActor->Child<bool>(_("bPlayDestructionEffects")) = false;
 
 	BuildingActor->Call(_("SetActorScale3D"), FVector(0, 0, 0));
 	BuildingActor->Call(_("K2_DestroyActor"));
 
 	auto EditedActor = Core::SpawnActorEasy(NewClass, EditComponentLocation, EditComponentRotation);
-	EditedActor->Call(_("SetMirrored"), bMirrored);
+	if (FindObject(_(L"/Script/FortniteGame.BuildingSMActor.SetMirrored"))->GetFunctionChildrenOffset()[3] != 0x14) EditedActor->Call(_("SetMirrored"), FixedParamsInstance.bMirrored);
+	else EditedActor->Call(_("SetMirrored"), bMirrored);
 
 	if (FindObject(_(L"/Script/FortniteGame.BuildingActor.InitializeKismetSpawnedBuildingActor"))->GetFunctionChildrenOffset().size() == 3) EditedActor->Call(_("InitializeKismetSpawnedBuildingActor"), EditedActor, PlayerController, true);
 	else EditedActor->Call(_("InitializeKismetSpawnedBuildingActor"), EditedActor, PlayerController);

@@ -23,10 +23,10 @@ public:
 	static void ServerHandlePickup(class UObject* Pickup);
 	static void FixBuildingFoundations();
 	static void Fixbus();
-	static void OnServerCreateBuildingActor();
-	static void Farming(class UObject* BuildingPiece);
+	static void Loot();
+	static void OnServerCreateBuildingActor(PVOID Params);
 	static void OnBeginEditActor(class UObject* BuildingPiece);
-	static void OnFinishEditActor(class UObject* BuildingActor, class UObject* NewClass, int RotationIteration, bool bMirrored);
+	static void OnFinishEditActor(class UObject* BuildingActor, class UObject* NewClass, int RotationIteration, bool bMirrored, PVOID Params);
 	static void SpawnPickup(class UObject* ItemDefinition, int Count, struct FVector Location);
 	static void GrantAbility(class UObject* Class);
 private:
