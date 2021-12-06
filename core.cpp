@@ -31,48 +31,21 @@ void Core::Setup()
 	
 	GObjectArray = decltype(GObjectArray)(FindPattern(_("49 63 C8 48 8D 14 40 48 8B 05 ? ? ? ? 48 8B 0C C8 48 8D 04 D1"), true, 10));
 
+	//Better get the address from these calls rather than using 5 different patterns
+	FNameToString = decltype(FNameToString)(FindPattern(_("E8 ? ? ? ? F3 41 0F 10 06 48 8D 15 ? ? ? ? F3 0F 59 05 ? ? ? ? 48 8B CF"), true, 1));
+
+	FreeInternal = decltype(FreeInternal)(FindPattern(_("E8 ? ? ? ? 48 8B 0F 48 89 0B 4C 89 37 8B 47 08 89 43 08 8B 47 0C 89 43 0C 4C 89 77 08"), true, 1));
+	
 	//This is the fix to arrays behaving "bad", such as causing crashes when attempting to go back to lobby
 	//or freezing the game when adding to inventory in S9+ 
 	Realloc = decltype(Realloc)(FindPattern(_("E8 ? ? ? ? 48 89 03 48 8B 5C 24 ? 48 83 C4 20"), true, 1));
 
-	//Initialize hardcoded offsets and Functions
+	//Initialize hardcoded offsets 
 	switch ((int)(stod(GetEngineVersion().ToString().substr(0, 4)) * 100))
 	{
-	case 416: {
-		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 40 83 79 04 00 48 8B DA 48 8B F9")));
-		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9 48 8B 0D ?")));
-		break;
-	}
-	case 419: {
-		FNameToString = decltype(FNameToString)(FindPattern(_("40 53 48 83 EC 40 83 79 04 00 48 8B DA 75 19 E8 ? ? ? ?")));
-		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 1D 4C 8B 05 ? ? ? ? 4D 85 C0")));
-		break;
-	}
-	case 420: {
-		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 40 83 79 04 00 48 8B DA 48 8B F9")));
-		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 1D 4C 8B 05 ? ? ? ? 4D 85 C0")));
-		break;
-	}
-	case 421: {
-		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 30 83 79 04 00 48 8B DA 48 8B F9")));
-		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
-		break;
-	}
 	case 422:
-	case 423: {
-		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 57 48 83 EC 30 83 79 04 00 48 8B DA 48 8B F9")));
-		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
-		offsets::Children = 0x48;
-		offsets::Next = 0x28;
-		offsets::ParamsSize = 0x9E;
-		offsets::ReturnValueOffset = 0xA0;
-		offsets::SuperClass = 0x40;
-		offsets::StructSize = 0x50;
-		break;
-	}
+	case 423:
 	case 424: {
-		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 55 56 57 48 8B EC 48 83 EC 30 8B 01 48 8B F1 44 8B 49 04 8B F8")));
-		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
 		offsets::Children = 0x48;
 		offsets::Next = 0x28;
 		offsets::ParamsSize = 0x9E;
@@ -82,8 +55,6 @@ void Core::Setup()
 		break;
 	}
 	case 425: {
-		FNameToString = decltype(FNameToString)(FindPattern(_("48 89 5C 24 ? 55 56 57 48 8B EC 48 83 EC 30 8B 01 48 8B F1 44 8B 49 04 8B F8")));
-		FreeInternal = decltype(FreeInternal)(FindPattern(_("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9")));
 		offsets::Children = 0x48;
 		offsets::Next = 0x28;
 		offsets::ParamsSize = 0xCE;

@@ -79,7 +79,7 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	}
 	else if (FuncName.find(_("ServerAttemptInteract")) != -1)
 	{
-
+		Athena::Loot();
 	}
 	else if (FuncName.find(_("ReturnToMainMenu")) != -1)
 	{
