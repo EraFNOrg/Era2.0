@@ -89,52 +89,13 @@ void Athena::AddToInventory(class UObject* item, int Count, char Index, int Slot
 {
 	if (IsBadReadPtr(item)) return;
 
-	static auto Size = *(int32*)(int64(FindObject(_(L"/Script/FortniteGame.FortItemEntry"))) + offsets::StructSize);
-
 	auto ItemInstance = item->Call<UObject*>(_("CreateTemporaryItemInstanceBP"), Count, 1);
+	
 	WorldInventory->Child<TArray<UObject*>>(_("ItemInstances")).Add(ItemInstance);
-
+	WorldInventory->Child<TArray<char>>(_("ReplicatedEntries")).AddWithSize(*(int32*)(int64(FindObject(_(L"/Script/FortniteGame.FortItemEntry"))) + offsets::StructSize), &ItemInstance->Child<void*>(_("ItemEntry")));
+	
 	ItemInstance->Call(_("SetOwningControllerForTemporaryItem"), PlayerController);
-
-	switch (Size)
-	{
-	case 0xA8: {
-		struct ItemEntry { char pad[0xA8]; };
-		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
-		break;
-	}
-	case 0xB0: {
-		struct ItemEntry { char pad[0xB0]; };
-		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
-		break;
-	}
-	case 0xC0: {
-		struct ItemEntry { char pad[0xC0]; };
-		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
-		break;
-	}
-	case 0xC8: {
-		struct ItemEntry { char pad[0xC8]; };
-		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
-		break;
-	}
-	case 0xD0: {
-		struct ItemEntry { char pad[0xD0]; };
-		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
-		break;
-	}
-	case 0x120: {
-		struct ItemEntry { char pad[0x120]; };
-		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
-		break;
-	}
-	case 0x150: {
-		struct ItemEntry { char pad[0x150]; };
-		WorldInventory->Child<TArray<ItemEntry>>(_("ReplicatedEntries")).Add(ItemInstance->Child<ItemEntry>(_("ItemEntry")));
-		break;
-	}
-	}
-
+		
 	Quickbars->Call(_("ServerAddItemInternal"), ItemInstance->Call<FGuid>(_("GetItemGuid")), Index, Slot);
 }
 

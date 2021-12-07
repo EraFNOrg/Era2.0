@@ -25,6 +25,15 @@ public:
 		max = count;
 	};
 
+	void AddWithSize(size_t SizeOfElement, void* ElementPointer)
+	{
+		Data = (T*)Realloc(Data, SizeOfElement * (count + 1), 0);
+
+		memcpy((Data + ((SizeOfElement - sizeof(T)) * count) + count++), ElementPointer, SizeOfElement);
+
+		max = count;
+	}
+
 	inline T& operator[](int i)
 	{
 		return Data[i];
