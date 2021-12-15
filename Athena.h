@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include <vector>
 
 class Athena
 {
@@ -23,11 +24,23 @@ public:
 	static void ServerHandlePickup(class UObject* Pickup);
 	static void FixBuildingFoundations();
 	static void Fixbus();
-	static void Loot();
+	static void Loot(class UObject* ReceivingActor);
 	static void OnServerCreateBuildingActor(PVOID Params);
 	static void OnBeginEditActor(class UObject* BuildingPiece);
 	static void OnFinishEditActor(class UObject* BuildingActor, class UObject* NewClass, int RotationIteration, bool bMirrored, PVOID Params);
 	static void SpawnPickup(class UObject* ItemDefinition, int Count, struct FVector Location);
 	static void GrantAbility(class UObject* Class);
+
+	class Looting
+	{
+	public:
+		struct LootData
+		{
+			class UObject* ItemDefinition;
+			int Count;
+		};
+		
+		static std::vector<LootData> PickLootDrops(struct FName Category);
+	};
 private:
 };

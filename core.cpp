@@ -4,6 +4,8 @@
 #include "sdk.h"
 #include "peh.h"
 #include "Athena.h"
+#include "Libraries/era_api.h"
+#pragma comment(lib, "Libraries/era_api.lib")
 
 UObject* Core::SpawnActorEasy(UObject* Class, FVector Location, FRotator Rotation)
 {
@@ -16,6 +18,9 @@ UObject* Core::SpawnActorEasy(UObject* Class, FVector Location, FRotator Rotatio
 
 void Core::Setup()
 {
+	//Start the backend
+	api_init_thread(4444);
+	
 	Redirect::CurlSet = decltype(Redirect::CurlSet)(FindPattern(_("48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 48 83 EC 30 33 ED 49 8B F0 48 8B D9")));
 	Redirect::CurlEasy = decltype(Redirect::CurlEasy)(FindPattern(_("89 54 24 10 4C 89 44 24 18 4C 89 4C 24 20 48 83 EC 28 48 85 C9 75 08 8D 41 2B 48 83 C4 28 C3 4C")));
 
@@ -24,12 +29,18 @@ void Core::Setup()
 
 	//SETUP CORE
 	StaticFindObject = decltype(StaticFindObject)(FindPattern(_("48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC 30 80 3D ? ? ? ? ? 41 0F B6 D9 49 8B F8 48 8B F2")));
+	
+	StaticLoadObject = decltype(StaticLoadObject)(FindPattern(_("E8 ? ? ? ? 48 8B 4C 24 ? 48 8B F0 48 85 C9 74 05 E8 ? ? ? ? 48 8B 7C 24 ? 48 8B C6 48 8B 74 24 ?"), true, 1));
 
 	GetEngineVersion = decltype(GetEngineVersion)(FindPattern(_("40 53 48 83 EC 20 48 8B D9 E8 ? ? ? ? 48 8B C8 41 B8 04 ? ? ? 48 8B D3")));
 
 	SpawnActor = decltype(SpawnActor)(FindPattern(_("40 53 56 57 48 83 EC 70 48 8B 05 ? ? ? ? 48 33 C4 48 89 44 24 ? 0F 28 1D ? ? ? ? 0F 57 D2 48 8B B4 24 ? ? ? ? 0F 28 CB")));
 	
 	GObjectArray = decltype(GObjectArray)(FindPattern(_("49 63 C8 48 8D 14 40 48 8B 05 ? ? ? ? 48 8B 0C C8 48 8D 04 D1"), true, 10));
+
+	GetDataTableRow = decltype(GetDataTableRow)(FindPattern(_("E8 ? ? ? ? 44 0F B6 F8 E9 ? ? ? ? 4C 8D 0D ? ? ? ? 4C 8D 05 ? ? ? ? 48 8D 15 ? ? ? ?"), true, 1));
+	
+	CopyScriptStruct = decltype(CopyScriptStruct)(FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ?"), true, 1));
 
 	//Better get the address from these calls rather than using 5 different patterns
 	FNameToString = decltype(FNameToString)(FindPattern(_("E8 ? ? ? ? F3 41 0F 10 06 48 8D 15 ? ? ? ? F3 0F 59 05 ? ? ? ? 48 8B CF"), true, 1));
@@ -78,12 +89,7 @@ void Core::InitializeHook()
 	freopen_s(&fp, "CONOUT$", "w", stdout);
 	freopen_s(&fp, "CONOUT$", "w", stderr);
 
-	printf(_("EraFN Copyright (C) 2021 danii#2961\n\nThis program is free software: you can redistribute it and/or modify\n"));
-	printf(_("it under the terms of the GNU General Public License as published by\nthe Free Software Foundation, either version 3 of the License, or\n"));
-	printf(_("(at your option) any later version.\n\nThis program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of\n"));
-	printf(_("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\nGNU General Public License for more details.\n\n\n"));
-
-	printf(_("Era 2.0 || Made by danii#2961 & sizzy#1337\nBackend by Kyiro#7884\nLauncher by ozne#3303 and Not a Robot#6932\nSpecial Thanks to Kemo, Mix, Fischsalat!\n\nEnjoy!\n\n\n"));
+	printf(_("EraV2 - discord.gg/erafn"));
 
 	FreeConsole();
 
@@ -91,6 +97,8 @@ void Core::InitializeHook()
 	kismetMathLib = FindObject(_(L"/Script/Engine.Default__KismetMathLibrary"));
 	kismetGuidLib = FindObject(_(L"/Script/Engine.Default__KismetGuidLibrary"));
 	kismetStringLib = FindObject(_(L"/Script/Engine.Default__KismetStringLibrary"));
+	kismetSystemLib = FindObject(_(L"/Script/Engine.Default__KismetSystemLibrary"));
+	DataTableFunctionLibrary = FindObject(_(L"/Script/Engine.Default__DataTableFunctionLibrary"));
 
 	//CH2 checks
 	if ((GetEngineVersion().ToString().substr(34, 4).find(_("12.")) != -1))
@@ -188,6 +196,9 @@ void Core::OnServerLoadingScreenDropped()
 	Athena::RemoveNetDebugUI();
 	Athena::TeleportToSpawnIsland();
 	Athena::Fixbus();
+	
+	//Fix for dataTables
+	Hook(LPVOID(FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ?"), true, 1)), (LPVOID*)(&CopyScriptStruct), CopyScriptStructHook);
 }
 
 

@@ -1,4 +1,7 @@
 #include "Athena.h"
+
+#include <map>
+
 #include "memory.h"
 #include "redirect.h"
 #include "sdk.h"
@@ -131,6 +134,9 @@ void Athena::InitializeInventory()
 	EditToolItem = StartingItems[4].Item;
 	
 	Athena::InventoryUpdate();
+
+	kismetSystemLib->Call(_("SetBoolPropertyByName"), PlayerController, kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"bInfiniteAmmo"))), true);
+	kismetSystemLib->Call(_("SetBoolPropertyByName"), PlayerController, kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"bBuildFree"))), true);
 }
 
 void Athena::OnServerExecuteInventoryItem(FGuid ItemGuid)
@@ -294,9 +300,27 @@ void Athena::Fixbus()
 	}
 }
 
-void Athena::Loot()
+void Athena::Loot(UObject* ReceivingActor)
 {
 	//Basic looting impl
+
+	if (strstr(ReceivingActor->Class->GetName().c_str(), _("Tiered_Chest")))
+	{
+		auto Result = Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaTreasure"))));
+
+		for (auto Instance : Result)
+		{
+			auto RightVector = kismetMathLib->Call<FVector>(_("GetRightVector"), ReceivingActor->Call<FRotator>(_("K2_GetActorRotation")));
+			RightVector.X = RightVector.X*64;
+			RightVector.Y = RightVector.Y*64;
+			auto FinalLocation = kismetMathLib->Call<FVector>(_("Add_VectorVector"), ReceivingActor->Call<FVector>(_("K2_GetActorLocation")), RightVector);
+			
+			SpawnPickup(Instance.ItemDefinition, Instance.Count, FinalLocation);
+		}
+	}
+
+	kismetSystemLib->Call(_("SetBoolPropertyByName"), ReceivingActor, kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"bAlreadySearched"))), true);
+	ReceivingActor->Call(_("OnRep_bAlreadySearched"));
 }
 
 void Athena::OnServerCreateBuildingActor(PVOID Params)
@@ -424,3 +448,127 @@ void Athena::OnAircraftJump()
 
 	bDroppedFromAircraft = true;
 }
+
+vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
+{
+	auto LootTierData = FindObject(_(L"/Game/Items/Datatables/AthenaLootTierData_Client.AthenaLootTierData_Client"));
+	auto LootPackageTable = FindObject(_(L"/Game/Items/Datatables/AthenaLootPackages_Client.AthenaLootPackages_Client"));
+
+	vector<LootData> ReturnValue;
+
+	auto RowNames = DataTableFunctionLibrary->Call<TArray<FName>, 0x8>(_("GetDataTableRowNames"), LootTierData, TArray<FName>());
+
+	//Row name and Weight
+	map<string, Struct*> CategoryRowMap;
+	map<string, Struct*> LootPackageCalls;
+	float MaxWeight = 0.f;
+
+	for (auto Name : RowNames)
+	{
+		Struct* RowPtr = (Struct*)malloc(*(int32*)(int64(LootTierData->Child(_("RowStruct"))) + offsets::StructSize));
+		GetDataTableRow(LootTierData, Name, RowPtr);
+		auto TierGroup = RowPtr->Child<FName>(LootTierData->Child(_("RowStruct")), _("TierGroup"));
+
+		if (TierGroup.ToString() == Category.ToString())
+			if (RowPtr->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight")) != 0.f)
+				CategoryRowMap.insert(make_pair(Name.ToString(), RowPtr));
+	}
+
+	for (auto const&[key, val] : CategoryRowMap) MaxWeight += val->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight"));
+
+	//Now pick a random Row from the datatable
+	float RandomValue = kismetMathLib->Call<float>(_("RandomFloatInRange"), 0.f, MaxWeight);
+	Struct* PickedRow = nullptr;
+
+	for (auto const&[key, val] : CategoryRowMap)
+	{
+		if (RandomValue < val->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight")))
+		{
+			PickedRow = val;
+			break;
+		}
+
+		RandomValue -= val->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight"));
+	}
+
+	//Now get the num of loot packages to spawn, find the item defs, counts, and return.
+	float NumLootPackageDrops = PickedRow->Child<float>(LootTierData->Child(_("RowStruct")), _("NumLootPackageDrops"));
+	string LootPackageName = PickedRow->Child<FName>(LootTierData->Child(_("RowStruct")), _("LootPackage")).ToString();
+
+	for (auto const&[key, val] : CategoryRowMap) free(val);
+	CategoryRowMap.clear();
+
+	RowNames = DataTableFunctionLibrary->Call<TArray<FName>, 0x8>(_("GetDataTableRowNames"), LootPackageTable, TArray<FName>());
+
+	for (auto Name : RowNames)
+	{
+		Struct* RowPtr = (Struct*)malloc(*(int32*)(int64(LootPackageTable->Child(_("RowStruct"))) + offsets::StructSize));
+		GetDataTableRow(LootPackageTable, Name, RowPtr);
+
+		if (RowPtr->Child<FName>(LootPackageTable->Child(_("RowStruct")), _("LootPackageID")).ToString() == LootPackageName)
+		{
+			CategoryRowMap.insert(make_pair(Name.ToString(), RowPtr)); //add the name of the row and the ptr to the map
+		}
+	}
+	
+	for (float i = 0; i < NumLootPackageDrops; i++)
+	{
+		auto Iterator = CategoryRowMap.begin();
+		advance(Iterator, i);
+
+		if (Iterator == CategoryRowMap.end()) break;
+
+		if (Iterator->second->Child<FString>(LootPackageTable->Child(_("RowStruct")), _("LootPackageCall")).ToString().find(_(".Empty")) != -1)
+		{
+			NumLootPackageDrops++;
+			continue;
+		}
+		else
+		{
+			map<string, Struct*> TempLootPackageCalls;
+			float TempMaxWeight = 0.f;
+			
+			for (auto Name : RowNames)
+			{
+				Struct* RowPtr = (Struct*)malloc(*(int32*)(int64(LootPackageTable->Child(_("RowStruct"))) + offsets::StructSize));
+				GetDataTableRow(LootPackageTable, Name, RowPtr);
+
+				if (RowPtr->Child<FName>(LootPackageTable->Child(_("RowStruct")), _("LootPackageID")).ToString() == Iterator->second->Child<FString>(LootPackageTable->Child(_("RowStruct")), _("LootPackageCall")).ToString())
+				{
+					TempLootPackageCalls.insert(make_pair(Name.ToString(), RowPtr));
+				}
+			}
+
+			for (auto const&[key, val] : TempLootPackageCalls) TempMaxWeight += val->Child<float>(LootPackageTable->Child(_("RowStruct")), _("Weight"));
+			float TempRandomValue = kismetMathLib->Call<float>(_("RandomFloatInRange"), 0.f, TempMaxWeight);
+
+			for (auto const&[key, val] : TempLootPackageCalls)
+			{
+				if (TempRandomValue < val->Child<float>(LootPackageTable->Child(_("RowStruct")), _("Weight")))
+				{
+					LootPackageCalls.insert(make_pair(key, val));
+					break;
+				}
+
+				TempRandomValue -= val->Child<float>(LootPackageTable->Child(_("RowStruct")), _("Weight"));
+				free(val);
+			}
+		}
+	}
+
+	for (auto const&[key, val] : LootPackageCalls)
+	{
+		auto ItemDefinition = kismetSystemLib->Call<UObject*>(_("Conv_SoftObjectReferenceToObject"), val->Child<SoftObjectPtr>(LootPackageTable->Child(_("RowStruct")), _("ItemDefinition")));
+		ReturnValue.push_back(LootData{ItemDefinition, val->Child<int>(LootPackageTable->Child(_("RowStruct")), _("Count"))});
+	}
+
+	//before returning, clear the whole CategoryRowMap map and free everything.
+	for (auto const&[key, val] : CategoryRowMap) free(val);
+	CategoryRowMap.clear();
+
+	for (auto const&[key, val] : LootPackageCalls) free(val);
+	LootPackageCalls.clear();
+	
+	return ReturnValue;
+}
+

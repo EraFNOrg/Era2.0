@@ -25,6 +25,9 @@ inline void* (*PE)(class UObject* Object, class UObject* Function, PVOID Params)
 inline class UObject* (*StaticFindObject)(class UObject* Class, void* Outer, const wchar_t* Name, bool ExactClass);
 inline void* (*Realloc)(void* Block, SIZE_T NewSize, uint32 Alignment);
 inline class UObject* (*SpawnActor)(class UObject* World, class UObject* Class, struct FVector* Location, struct FRotator* Rotation, const SpawnActorParams& Params);
+inline bool (*GetDataTableRow)(class UObject* DataTable, struct FName Name, void* OutRowPtr);
+inline void* (*CopyScriptStruct)(class UObject* Struct, void* OutPtr, void* InPtr, int ArraySize);
+inline class UObject* (*StaticLoadObject)(class UObject*, class UObject*, const wchar_t*, const wchar_t*, int, void*, bool);
 inline struct FString (*GetEngineVersion)();
 inline struct GObjects* GObjectArray;
 inline class UObject* PlayerController;
@@ -41,6 +44,8 @@ inline class UObject* Quickbars;
 inline class UObject* kismetMathLib;
 inline class UObject* kismetGuidLib;
 inline class UObject* kismetStringLib;
+inline class UObject* kismetSystemLib;
+inline class UObject* DataTableFunctionLibrary;
 inline class UObject* WorldSettings;
 inline class UObject* EditToolItem;
 inline vector<class UObject*> CharacterPartsArray;

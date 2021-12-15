@@ -590,10 +590,21 @@ struct GObjects
 	}
 };
 
+struct SoftObjectPtr
+{
+	char pad[0x28];
+};
+
 //Functions
 inline UObject* FindObject(const wchar_t* Name)
 {
-	return StaticFindObject(nullptr, nullptr, Name, false);
+	auto Object = StaticFindObject(nullptr, nullptr, Name, false);
+	if (!Object)
+	{
+		Object = StaticLoadObject(nullptr, nullptr, Name, nullptr, 0, nullptr, true);
+	}
+	
+	return Object;
 }
 
 inline UObject* FindObjectFromGObj(string Name)
@@ -629,3 +640,84 @@ inline FKey GetKeyFromAction(string ActionName)
 			return Setting.Key;
 	}
 }
+
+struct Struct
+{
+	//A little object finder for structs, that actually re-uses UObject::Child code :))
+	template<typename T = UObject*>
+	T& Child(class UObject* StructObj, string VariableName)
+	{
+		UObject* Class = StructObj;
+
+		//Scan UProperties
+		while (Class)
+		{
+			UObject* Children = *(UObject**)(int64(Class) + offsets::Children);
+
+			if (!Children) {
+				Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+				continue;
+			}
+
+			while (Children)
+			{
+				if (Children->Class->GetName() == _("StructProperty"))
+				{
+					auto StructChildren = *(UObject**)(int64(*(UObject**)(int64(Children) + offsets::Class)) + offsets::Children);
+
+					while (StructChildren)
+					{
+						if (StructChildren->GetName() == VariableName) return *(T*)(int64(this) + *(uint32*)(int64(Children) + offsets::Offset) + *(uint32*)(int64(StructChildren) + offsets::Offset));
+
+						StructChildren = *(UObject**)(int64(StructChildren) + offsets::Next);
+					}
+				}
+
+				if (Children->GetName() == VariableName)
+				{
+					return *(T*)(int64(this) + *(int32*)(int64(Children) + offsets::Offset));
+				}
+
+				Children = *(UObject**)(int64(Children) + offsets::Next);
+			}
+
+			Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+		}
+
+		//Scan FFields
+		Class = StructObj;
+
+		while (Class)
+		{	
+			FField* ChildrenProperties = *(FField**)(int64(Class) + 0x50);
+			
+			if (!ChildrenProperties->IsValid()) {
+				Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+				continue;
+			}
+
+			while (ChildrenProperties->IsValid())
+			{
+				if (ChildrenProperties->ClassPointer->GetName() == _("StructProperty"))
+				{
+					auto StructChildren = *(FField**)(int64(*(UObject**)(int64(ChildrenProperties) + offsets::Class)) + 0x50);
+
+					while (StructChildren)
+					{
+						if (StructChildren->GetName() == VariableName) return *(T*)(int64(this) + *(uint32*)(int64(ChildrenProperties) + 0x4C) + *(uint32*)(int64(StructChildren) + 0x4C));
+
+						StructChildren = StructChildren->Next;
+					}
+				}
+
+				if (ChildrenProperties->GetName() == VariableName) return *(T*)(int64(this) + *(int32*)(int64(ChildrenProperties) + 0x4C));
+
+				ChildrenProperties = ChildrenProperties->Next;
+			}
+
+			Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+		}
+
+		return *(T*)(0);
+	}
+};

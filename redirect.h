@@ -33,7 +33,7 @@ namespace Redirect
 
 		INT returnValue = 0;
 		const regex EpicURL(_("https:\\/\\/(.*)\\.ol\\.epicgames.com"));
-		const string EraURL(_("http://erafnbackend.herokuapp.com"));
+		const string EraURL(_("http://127.0.0.1:4444"));
 
 		va_list argument;
 		va_list CopiedArgument;

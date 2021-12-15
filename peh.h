@@ -79,7 +79,7 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	}
 	else if (FuncName.find(_("ServerAttemptInteract")) != -1)
 	{
-		Athena::Loot();
+		Athena::Loot(*(UObject**)(Params));
 	}
 	else if (FuncName.find(_("ReturnToMainMenu")) != -1)
 	{
@@ -94,4 +94,23 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	}
 
 	return PE(Object, Function, Params);
+}
+
+inline void* CopyScriptStructHook(UObject* Struct, void* OutPtr, void* InPtr, int ArraySize)
+{
+	static auto LootTierDataRowStruct = FindObject(_(L"/Script/FortniteGame.FortLootTierData"));
+	static auto LootPackagesRowStruct = FindObject(_(L"/Script/FortniteGame.FortLootPackageData"));
+
+	if (!Struct) return NULL;
+	
+	if (Struct == LootTierDataRowStruct ||
+		Struct == LootPackagesRowStruct)
+	{
+		//copy it manually
+		memcpy(OutPtr, InPtr, *(int32*)(int64(Struct) + offsets::StructSize));
+		
+		return NULL;
+	}
+	
+	return CopyScriptStruct(Struct, OutPtr, InPtr, ArraySize);
 }
