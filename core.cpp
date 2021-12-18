@@ -40,7 +40,7 @@ void Core::Setup()
 
 	GetDataTableRow = decltype(GetDataTableRow)(FindPattern(_("E8 ? ? ? ? 44 0F B6 F8 E9 ? ? ? ? 4C 8D 0D ? ? ? ? 4C 8D 05 ? ? ? ? 48 8D 15 ? ? ? ?"), true, 1));
 	
-	CopyScriptStruct = decltype(CopyScriptStruct)(FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ?"), true, 1));
+	CopyScriptStruct = decltype(CopyScriptStruct)(FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ? C7 ? ? ? ? ? ? C7 ? ? ? ? ? ? 4C"), true, 1) > 0 ? FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ? C7 ? ? ? ? ? ? C7 ? ? ? ? ? ? 4C"), true, 1) : FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ?"), true, 1));
 
 	//Better get the address from these calls rather than using 5 different patterns
 	FNameToString = decltype(FNameToString)(FindPattern(_("E8 ? ? ? ? F3 41 0F 10 06 48 8D 15 ? ? ? ? F3 0F 59 05 ? ? ? ? 48 8B CF"), true, 1));
@@ -142,7 +142,7 @@ void Core::InitializeGlobals()
 		->Child(_("WorldSettings"));
 
 	//Console & CheatManager
-	CheatManager = GameStatics->Call<UObject*>(_("SpawnObject"), FindObject(_(L"/Script/Engine.CheatManager")), PlayerController);
+	CheatManager = GameStatics->Call<UObject*>(_("SpawnObject"), FindObject(_(L"/Script/FortniteGame.FortCheatManager")), PlayerController);
 	PlayerController->Child(_("CheatManager")) = CheatManager;
 	GameViewportClient->Child(_("ViewportConsole")) = GameStatics->Call<UObject*>(_("SpawnObject"), FindObject(_(L"/Script/Engine.Console")), GameViewportClient);
 
@@ -198,7 +198,11 @@ void Core::OnServerLoadingScreenDropped()
 	Athena::Fixbus();
 	
 	//Fix for dataTables
-	Hook(LPVOID(FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ?"), true, 1)), (LPVOID*)(&CopyScriptStruct), CopyScriptStructHook);
+	Hook(LPVOID(FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ? C7 ? ? ? ? ? ? C7 ? ? ? ? ? ? 4C"), true, 1) > 0 ? FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ? C7 ? ? ? ? ? ? C7 ? ? ? ? ? ? 4C"), true, 1) : FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ?"), true, 1)), (LPVOID*)(&CopyScriptStruct), CopyScriptStructHook);
+
+	//Spawn floor loot, to do: optimize picklootdrops, loading times are extreme rn.
+	Athena::SpawnAthenaFloorLoot();
+	Athena::SpawnWarmupFloorLoot();
 }
 
 

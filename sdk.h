@@ -596,10 +596,10 @@ struct SoftObjectPtr
 };
 
 //Functions
-inline UObject* FindObject(const wchar_t* Name)
+inline UObject* FindObject(const wchar_t* Name, bool bLoadObject = false, bool bUseAnyPackage = false)
 {
-	auto Object = StaticFindObject(nullptr, nullptr, Name, false);
-	if (!Object)
+	auto Object = StaticFindObject(nullptr, bUseAnyPackage ? ((void*)-1) : nullptr, Name, false);
+	if (!Object && bLoadObject)
 	{
 		Object = StaticLoadObject(nullptr, nullptr, Name, nullptr, 0, nullptr, true);
 	}

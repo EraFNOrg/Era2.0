@@ -132,11 +132,11 @@ void Athena::InitializeInventory()
 	AddToInventory(FindObject(_(L"/Game/Athena/Items/Traps/TID_Floor_Spikes_Athena_R_T03.TID_Floor_Spikes_Athena_R_T03")), 1, char(3), 0);
 	
 	EditToolItem = StartingItems[4].Item;
-	
-	Athena::InventoryUpdate();
 
 	kismetSystemLib->Call(_("SetBoolPropertyByName"), PlayerController, kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"bInfiniteAmmo"))), true);
 	kismetSystemLib->Call(_("SetBoolPropertyByName"), PlayerController, kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"bBuildFree"))), true);
+	
+	Athena::InventoryUpdate();
 }
 
 void Athena::OnServerExecuteInventoryItem(FGuid ItemGuid)
@@ -202,9 +202,7 @@ void Athena::CheatScript(const char* script)
 	else if (ScriptFullName.find(_("spawnweapon")) != -1)
 	{
 		string WeaponName = ScriptFullName.substr(ScriptFullName.find(_(" ")) + 1);
-		wstring Path = _(L"/Game/Athena/Items/Weapons/");
-		Path.append(wstring(WeaponName.begin(), WeaponName.end())).append(_(L".")).append(wstring(WeaponName.begin(), WeaponName.end()));
-		auto ItemDefinition = FindObject(Path.c_str());
+		auto ItemDefinition = FindObject(wstring(WeaponName.begin(), WeaponName.end()).c_str(), false, true);
 
 		if (ItemDefinition) SpawnPickup(ItemDefinition, 1, Pawn->Call<FVector>(_("K2_GetActorLocation")));
 	}
@@ -254,7 +252,7 @@ void Athena::ServerHandlePickup(UObject* Pickup)
 	UObject* ItemDefinition = Pickup->Child(_("ItemDefinition"));
 	int Count = Pickup->Child<int>(_("Count"));
 
-	auto InventoryContext = FindObject(_(L"/Script/BlueprintContext.Default__BlueprintContextLibrary"))->Call<UObject*>(_("GetContext"), GameViewportClient->Child(_("GameInstance"))->Child<TArray<UObject*>>(_("LocalPlayers"))[0], FindObject(_(L"/Script/FortniteUI.FortInventoryContext")));
+	static auto InventoryContext = FindObject(_(L"/Script/BlueprintContext.Default__BlueprintContextLibrary"))->Call<UObject*>(_("GetContext"), GameViewportClient->Child(_("GameInstance"))->Child<TArray<UObject*>>(_("LocalPlayers"))[0], FindObject(_(L"/Script/FortniteUI.FortInventoryContext")));
 
 	for (int i = 0; i < 6; ++i)
 	{
@@ -304,18 +302,24 @@ void Athena::Loot(UObject* ReceivingActor)
 {
 	//Basic looting impl
 
-	if (strstr(ReceivingActor->Class->GetName().c_str(), _("Tiered_Chest")))
+	if (strstr(ReceivingActor->Class->GetName().c_str(), _("Tiered_Chest")) &&
+		ReceivingActor->Class->GetName().find(_("Creative")) == -1)
 	{
-		auto Result = Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaTreasure"))));
-
-		for (auto Instance : Result)
+		if (ReceivingActor->Child<float>(_("TimeUntilLootRegenerates")) == 0)
 		{
-			auto RightVector = kismetMathLib->Call<FVector>(_("GetRightVector"), ReceivingActor->Call<FRotator>(_("K2_GetActorRotation")));
-			RightVector.X = RightVector.X*64;
-			RightVector.Y = RightVector.Y*64;
-			auto FinalLocation = kismetMathLib->Call<FVector>(_("Add_VectorVector"), ReceivingActor->Call<FVector>(_("K2_GetActorLocation")), RightVector);
+			auto Result = Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaTreasure"))));
+
+			for (auto Instance : Result)
+			{
+				auto RightVector = kismetMathLib->Call<FVector>(_("GetRightVector"), ReceivingActor->Call<FRotator>(_("K2_GetActorRotation")));
+				RightVector.X = RightVector.X*64;
+				RightVector.Y = RightVector.Y*64;
+				auto FinalLocation = kismetMathLib->Call<FVector>(_("Add_VectorVector"), ReceivingActor->Call<FVector>(_("K2_GetActorLocation")), RightVector);
 			
-			SpawnPickup(Instance.ItemDefinition, Instance.Count, FinalLocation);
+				SpawnPickup(Instance.ItemDefinition, Instance.Count, FinalLocation);
+			}
+
+			ReceivingActor->Child<float>(_("TimeUntilLootRegenerates")) = 1;
 		}
 	}
 
@@ -395,14 +399,14 @@ void Athena::OnFinishEditActor(UObject* BuildingActor, UObject* NewClass, int Ro
 	else EditedActor->Call(_("InitializeKismetSpawnedBuildingActor"), EditedActor, PlayerController);
 }
 
-void Athena::SpawnPickup(UObject* ItemDefinition, int Count, FVector Location)
+void Athena::SpawnPickup(UObject* ItemDefinition, int Count, FVector Location, bool bToss)
 {
 	auto Pickup = Core::SpawnActorEasy(FindObject(_(L"/Script/FortniteGame.FortPickupAthena")), Location, FRotator(0,0,0));
 
 	Pickup->Child(_("ItemDefinition")) = ItemDefinition;
 	Pickup->Child<int>(_("Count")) = Count;
 	Pickup->Call(_("OnRep_PrimaryPickupItemEntry"));
-	Pickup->Call(_("TossPickup"), Location, Pawn, 1, true);
+	Pickup->Call(_("TossPickup"), Location, Pawn, 1, bToss);
 }
 
 void Athena::GrantAbility(UObject* Class)
@@ -447,12 +451,17 @@ void Athena::OnAircraftJump()
 	Athena::ShowSkin();
 
 	bDroppedFromAircraft = true;
+
+	//Equip pickaxe for early build manually.
+	static auto InventoryContext = FindObject(_(L"/Script/BlueprintContext.Default__BlueprintContextLibrary"))->Call<UObject*>(_("GetContext"), GameViewportClient->Child(_("GameInstance"))->Child<TArray<UObject*>>(_("LocalPlayers"))[0], FindObject(_(L"/Script/FortniteUI.FortInventoryContext")));
+	auto Pickaxe = InventoryContext->Call<UObject*>(_("GetQuickBarSlottedItem"), char(0), 0);
+	Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Pickaxe->Call<UObject*>(_("GetItemDefinitionBP")), Pickaxe->Call<FGuid>(_("GetItemGuid")));
 }
 
 vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 {
-	auto LootTierData = FindObject(_(L"/Game/Items/Datatables/AthenaLootTierData_Client.AthenaLootTierData_Client"));
-	auto LootPackageTable = FindObject(_(L"/Game/Items/Datatables/AthenaLootPackages_Client.AthenaLootPackages_Client"));
+	auto LootTierData = FindObject(_(L"/Game/Items/Datatables/AthenaLootTierData_Client.AthenaLootTierData_Client"), true);
+	auto LootPackageTable = FindObject(_(L"/Game/Items/Datatables/AthenaLootPackages_Client.AthenaLootPackages_Client"), true);
 
 	vector<LootData> ReturnValue;
 
@@ -518,6 +527,8 @@ vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 
 		if (Iterator == CategoryRowMap.end()) break;
 
+		if (LootPackageName.find(_(".Empty")) != -1) continue;
+		
 		if (Iterator->second->Child<FString>(LootPackageTable->Child(_("RowStruct")), _("LootPackageCall")).ToString().find(_(".Empty")) != -1)
 		{
 			NumLootPackageDrops++;
@@ -527,16 +538,23 @@ vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 		{
 			map<string, Struct*> TempLootPackageCalls;
 			float TempMaxWeight = 0.f;
-			
-			for (auto Name : RowNames)
-			{
-				Struct* RowPtr = (Struct*)malloc(*(int32*)(int64(LootPackageTable->Child(_("RowStruct"))) + offsets::StructSize));
-				GetDataTableRow(LootPackageTable, Name, RowPtr);
 
-				if (RowPtr->Child<FName>(LootPackageTable->Child(_("RowStruct")), _("LootPackageID")).ToString() == Iterator->second->Child<FString>(LootPackageTable->Child(_("RowStruct")), _("LootPackageCall")).ToString())
+			if (!strstr(LootPackageName.c_str(), _("WorldList")))
+			{
+				for (auto Name : RowNames)
 				{
-					TempLootPackageCalls.insert(make_pair(Name.ToString(), RowPtr));
+					Struct* RowPtr = (Struct*)malloc(*(int32*)(int64(LootPackageTable->Child(_("RowStruct"))) + offsets::StructSize));
+					GetDataTableRow(LootPackageTable, Name, RowPtr);
+
+					if (RowPtr->Child<FName>(LootPackageTable->Child(_("RowStruct")), _("LootPackageID")).ToString() == Iterator->second->Child<FString>(LootPackageTable->Child(_("RowStruct")), _("LootPackageCall")).ToString())
+					{
+						TempLootPackageCalls.insert(make_pair(Name.ToString(), RowPtr));
+					}
 				}
+			}
+			else
+			{
+				for (auto const&[key, val] : CategoryRowMap) TempLootPackageCalls.insert(make_pair(key, val));
 			}
 
 			for (auto const&[key, val] : TempLootPackageCalls) TempMaxWeight += val->Child<float>(LootPackageTable->Child(_("RowStruct")), _("Weight"));
@@ -570,5 +588,27 @@ vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 	LootPackageCalls.clear();
 	
 	return ReturnValue;
+}
+
+void Athena::SpawnAthenaFloorLoot()
+{
+	auto AthenaFloorLootLocs = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), World, FindObject(_(L"Tiered_Athena_FloorLoot_01_C"), false, true), TArray<UObject*>());
+
+	for (auto AthenaFloorLootLoc : AthenaFloorLootLocs)
+	{
+		auto Loot = Athena::Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaFloorLoot"))));
+		for (auto LootElement : Loot) SpawnPickup(LootElement.ItemDefinition, LootElement.Count, AthenaFloorLootLoc->Call<FVector>(_("K2_GetActorLocation")), false);
+	}
+}
+
+void Athena::SpawnWarmupFloorLoot()
+{
+	auto AthenaFloorLootLocs_Warmup = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), World, FindObject(_(L"Tiered_Athena_FloorLoot_Warmup_C"), false, true), TArray<UObject*>());
+
+	for (auto AthenaFloorLootLoc_Warmup : AthenaFloorLootLocs_Warmup)
+	{
+		auto Loot = Athena::Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaFloorLoot_Warmup"))));
+		for (auto LootElement : Loot) SpawnPickup(LootElement.ItemDefinition, LootElement.Count, AthenaFloorLootLoc_Warmup->Call<FVector>(_("K2_GetActorLocation")), false);
+	}
 }
 

@@ -54,6 +54,7 @@ inline bool bDroppedFromAircraft = false;
 inline bool bPressedPlay = false;
 inline bool bInFrontend = true;
 inline bool bCoreInitialized = false;
+inline bool bInfiniteAmmo = true;
 
 namespace offsets
 {

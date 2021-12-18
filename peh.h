@@ -21,6 +21,29 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	{
 		Athena::ServerHandlePickup(*(UObject**)(Params));
 	}
+	else if (FuncName.find(_("ToggleInfiniteAmmo")) != -1 && bLoadedInMatch)
+	{
+		bInfiniteAmmo = !bInfiniteAmmo;
+		kismetSystemLib->Call(_("SetBoolPropertyByName"), PlayerController, kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"bInfiniteAmmo"))), bInfiniteAmmo);
+		return NULL; //Some version got this func, not to execute it twice we will only use our own implementation.
+	}
+	else if (FuncName.find(_("GiveWeapon")) != -1)
+	{
+		struct ParamsStruct
+		{
+			FString Item;
+			int Slot;
+			int Count;
+		};
+
+		auto StructInstance = *reinterpret_cast<ParamsStruct*>(Params);
+		
+		auto ItemDefinition = FindObject(StructInstance.Item.ToWString(), false, true);
+
+		if (ItemDefinition) Athena::AddToInventory(ItemDefinition, StructInstance.Count, char(0), StructInstance.Slot);
+		Athena::InventoryUpdate();
+		return NULL;
+	}
 	else if (FuncName.find(_("ServerCreateBuildingActor")) != -1)
 	{
 		Athena::OnServerCreateBuildingActor(Params);
