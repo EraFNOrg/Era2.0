@@ -30,10 +30,7 @@ public:
 	static void OnFinishEditActor(class UObject* BuildingActor, class UObject* NewClass, int RotationIteration, bool bMirrored, PVOID Params);
 	static void SpawnPickup(class UObject* ItemDefinition, int Count, struct FVector Location, bool bToss = true);
 	static void GrantAbility(class UObject* Class);
-	static void SpawnWarmupFloorLoot();
-	static void SpawnAthenaFloorLoot();
 	static void SpawnBuildPreviews();
-	static void SetupLooting();
 
 	class Looting
 	{
