@@ -32,6 +32,8 @@ public:
 	static void GrantAbility(class UObject* Class);
 	static void SpawnWarmupFloorLoot();
 	static void SpawnAthenaFloorLoot();
+	static void SpawnBuildPreviews();
+	static void SetupLooting();
 
 	class Looting
 	{

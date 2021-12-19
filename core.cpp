@@ -181,6 +181,7 @@ void Core::OnReadyToStartMatch()
 	Athena::FixBuildingFoundations();
 	Athena::InitializeInventory();
 	Athena::GrantDefaultAbilities();
+	Athena::SpawnBuildPreviews();
 }
 
 void Core::OnServerLoadingScreenDropped()
@@ -192,14 +193,15 @@ void Core::OnServerLoadingScreenDropped()
 		bDroppedFromAircraft = !bDroppedFromAircraft;
 		return;
 	}
-
+	
 	Athena::RemoveNetDebugUI();
 	Athena::TeleportToSpawnIsland();
 	Athena::Fixbus();
-	
+
 	//Fix for dataTables
 	Hook(LPVOID(FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ? C7 ? ? ? ? ? ? C7 ? ? ? ? ? ? 4C"), true, 1) > 0 ? FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ? C7 ? ? ? ? ? ? C7 ? ? ? ? ? ? 4C"), true, 1) : FindPattern(_("E8 ? ? ? ? B9 ? ? ? ? ? 89 ? ? E8 ? ? ? ? ? ? ? 48 85 C0 74 ?"), true, 1)), (LPVOID*)(&CopyScriptStruct), CopyScriptStructHook);
-
+	Athena::SetupLooting();
+	
 	//Spawn floor loot, to do: optimize picklootdrops, loading times are extreme rn.
 	Athena::SpawnAthenaFloorLoot();
 	Athena::SpawnWarmupFloorLoot();

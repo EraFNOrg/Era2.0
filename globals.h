@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <windows.h>
 #include <vector>
 #include "Libraries/xorstr.hpp"
@@ -48,12 +49,21 @@ inline class UObject* kismetSystemLib;
 inline class UObject* DataTableFunctionLibrary;
 inline class UObject* WorldSettings;
 inline class UObject* EditToolItem;
+inline class UObject* Wall;
+inline class UObject* Floor;
+inline class UObject* Stairs;
+inline class UObject* Roof;
 inline vector<class UObject*> CharacterPartsArray;
+inline map<string, class UObject*> CallCache;
+inline map<string, struct Struct*> AthenaFloorLoot;
+inline map<string, struct Struct*> AthenaFloorLoot_Warmup;
+inline map<string, struct Struct*> AthenaLootTreasure;
 inline bool bLoadedInMatch = false;
 inline bool bDroppedFromAircraft = false;
 inline bool bPressedPlay = false;
 inline bool bInFrontend = true;
 inline bool bCoreInitialized = false;
+inline bool bFixedbus = false;
 inline bool bInfiniteAmmo = true;
 
 namespace offsets

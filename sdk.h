@@ -278,7 +278,10 @@ public:
 					}
 				}
 
-				if (ChildrenProperties->GetName() == name) return *(T*)(int64(this) + *(int32*)(int64(ChildrenProperties) + 0x4C));
+				if (ChildrenProperties->GetName() == name)
+				{
+					return *(T*)(int64(this) + *(int32*)(int64(ChildrenProperties) + 0x4C));
+				}
 
 				ChildrenProperties = ChildrenProperties->Next;
 			}
@@ -322,7 +325,18 @@ public:
 	template< typename T = int, int16 ReturnOffset = -1, typename ...Params >
 	T Call(string name, Params... args)
 	{
-		auto Function = &(this->Child<UObject>(name, true));
+		UObject* Function = nullptr;
+
+		//cache
+		if (CallCache.find(name) != CallCache.end())
+		{
+			Function = CallCache.find(name)->second;
+		}
+		else
+		{
+			Function = &(this->Child<UObject>(name, true));
+			CallCache.insert(make_pair(name, Function));
+		}
 
 		if (!IsBadReadPtr(Function)) {
 			auto ParamsSize = *(int16*)(int64(Function) + offsets::ParamsSize);

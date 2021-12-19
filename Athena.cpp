@@ -151,7 +151,67 @@ void Athena::OnServerExecuteInventoryItem(FGuid ItemGuid)
 				Pawn->Call<bool>(_("PickUpActor"), nullptr, CurrentItemDefinition);
 				Pawn->Child(_("CurrentWeapon"))->Child<FGuid>(_("ItemEntryGuid")) = Instance->Call<FGuid>(_("GetItemGuid"));
 			}
-			else Pawn->Call<UObject*>(_("EquipWeaponDefinition"), CurrentItemDefinition, Instance->Call<FGuid>(_("GetItemGuid")));
+			else
+			{
+				Pawn->Call<UObject*>(_("EquipWeaponDefinition"), CurrentItemDefinition, Instance->Call<FGuid>(_("GetItemGuid")));
+
+				if (GetEngineVersion().ToString().find(_("4.19")) != -1)
+				{
+					if (CurrentItemDefinition == FindObject(_(L"BuildingItemData_Wall"), false, true))
+					{
+						PlayerController->Child(_("CurrentBuildableClass")) = FindObject(_(L"PBWA_W1_Solid_C"), false, true);
+						PlayerController->Child(_("BuildPreviewMarker"))->Call(_("SetActorHiddenInGame"), true);
+						Wall->Call(_("SetActorHiddenInGame"), false);
+					}
+					else if (CurrentItemDefinition == FindObject(_(L"BuildingItemData_Floor"), false, true))
+					{
+						PlayerController->Child(_("CurrentBuildableClass")) = FindObject(_(L"PBWA_W1_Floor_C"), false, true);
+						PlayerController->Child(_("BuildPreviewMarker"))->Call(_("SetActorHiddenInGame"), true);
+						Floor->Call(_("SetActorHiddenInGame"), false);
+					}
+					else if (CurrentItemDefinition == FindObject(_(L"BuildingItemData_Stair_W"), false, true))
+					{
+						PlayerController->Child(_("CurrentBuildableClass")) = FindObject(_(L"PBWA_W1_StairW_C"), false, true);
+						PlayerController->Child(_("BuildPreviewMarker"))->Call(_("SetActorHiddenInGame"), true);
+						Stairs->Call(_("SetActorHiddenInGame"), false);
+					}
+					else if (CurrentItemDefinition == FindObject(_(L"BuildingItemData_RoofS"), false, true))
+					{
+						PlayerController->Child(_("CurrentBuildableClass")) = FindObject(_(L"PBWA_W1_RoofC_C"), false, true);
+						PlayerController->Child(_("BuildPreviewMarker"))->Call(_("SetActorHiddenInGame"), true);
+						Roof->Call(_("SetActorHiddenInGame"), false);
+					}
+
+					if (CurrentItemDefinition->IsA(FindObject(_(L"FortBuildingItemDefinition"), false, true)))
+					{
+						auto CurrentResource =  PlayerController->Child<int8>(_("CurrentResourceType")); //copy 
+					
+						//not to fuck up the preview
+						CheatManager->Call(_("BuildWith"), FString(_(L"Wood")));
+						CheatManager->Call(_("BuildWith"), FString(_(L"Stone")));
+						CheatManager->Call(_("BuildWith"), FString(_(L"Metal")));
+
+						switch(CurrentResource)
+						{
+						case 0:
+							{
+								CheatManager->Call(_("BuildWith"), FString(_(L"Wood")));
+								break;
+							}
+						case 1:
+							{
+								CheatManager->Call(_("BuildWith"), FString(_(L"Stone")));
+								break;
+							}
+						case 2:
+							{
+								CheatManager->Call(_("BuildWith"), FString(_(L"Metal")));
+								break;
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
@@ -295,6 +355,8 @@ void Athena::Fixbus()
 		
 		Pawn->Child<bool>(_("bIsSkydiving")) = true;
 		Pawn->Call(_("OnRep_IsSkydiving"), false);
+
+		bFixedbus = true;
 	}
 }
 
@@ -458,6 +520,37 @@ void Athena::OnAircraftJump()
 	Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Pickaxe->Call<UObject*>(_("GetItemDefinitionBP")), Pickaxe->Call<FGuid>(_("GetItemGuid")));
 }
 
+void Athena::SetupLooting()
+{
+	auto LootTierData = FindObject(_(L"/Game/Items/Datatables/AthenaLootTierData_Client.AthenaLootTierData_Client"), true);
+	auto LootPackageTable = FindObject(_(L"/Game/Items/Datatables/AthenaLootPackages_Client.AthenaLootPackages_Client"), true);
+
+	auto RowNames = DataTableFunctionLibrary->Call<TArray<FName>, 0x8>(_("GetDataTableRowNames"), LootTierData, TArray<FName>());
+
+	for (auto Name : RowNames)
+	{
+		Struct* RowPtr = (Struct*)malloc(*(int32*)(int64(LootTierData->Child(_("RowStruct"))) + offsets::StructSize));
+		GetDataTableRow(LootTierData, Name, RowPtr);
+		auto TierGroup = RowPtr->Child<FName>(LootTierData->Child(_("RowStruct")), _("TierGroup"));
+
+		if (TierGroup.ToString() == _("Loot_AthenaFloorLoot"))
+		{
+			if (RowPtr->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight")) != 0.f)
+				AthenaFloorLoot.insert(make_pair(Name.ToString(), RowPtr));
+		}
+		else if (TierGroup.ToString() == _("Loot_AthenaFloorLoot_Warmup"))
+		{
+			if (RowPtr->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight")) != 0.f)
+				AthenaFloorLoot_Warmup.insert(make_pair(Name.ToString(), RowPtr));
+		}
+		else if (TierGroup.ToString() == _("Loot_AthenaTreasure"))
+		{
+			if (RowPtr->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight")) != 0.f)
+				AthenaLootTreasure.insert(make_pair(Name.ToString(), RowPtr));
+		}
+	}
+}
+
 vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 {
 	auto LootTierData = FindObject(_(L"/Game/Items/Datatables/AthenaLootTierData_Client.AthenaLootTierData_Client"), true);
@@ -472,16 +565,9 @@ vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 	map<string, Struct*> LootPackageCalls;
 	float MaxWeight = 0.f;
 
-	for (auto Name : RowNames)
-	{
-		Struct* RowPtr = (Struct*)malloc(*(int32*)(int64(LootTierData->Child(_("RowStruct"))) + offsets::StructSize));
-		GetDataTableRow(LootTierData, Name, RowPtr);
-		auto TierGroup = RowPtr->Child<FName>(LootTierData->Child(_("RowStruct")), _("TierGroup"));
-
-		if (TierGroup.ToString() == Category.ToString())
-			if (RowPtr->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight")) != 0.f)
-				CategoryRowMap.insert(make_pair(Name.ToString(), RowPtr));
-	}
+	if (Category.ToString() == _("Loot_AthenaFloorLoot")) CategoryRowMap = AthenaFloorLoot;
+	else if (Category.ToString() == _("Loot_AthenaFloorLoot_Warmup")) CategoryRowMap = AthenaFloorLoot_Warmup;
+	else if (Category.ToString() == _("Loot_AthenaTreasure")) CategoryRowMap = AthenaLootTreasure; 
 
 	for (auto const&[key, val] : CategoryRowMap) MaxWeight += val->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight"));
 
@@ -500,11 +586,12 @@ vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 		RandomValue -= val->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight"));
 	}
 
+	if (!PickedRow) return {};
+
 	//Now get the num of loot packages to spawn, find the item defs, counts, and return.
 	float NumLootPackageDrops = PickedRow->Child<float>(LootTierData->Child(_("RowStruct")), _("NumLootPackageDrops"));
 	string LootPackageName = PickedRow->Child<FName>(LootTierData->Child(_("RowStruct")), _("LootPackage")).ToString();
-
-	for (auto const&[key, val] : CategoryRowMap) free(val);
+	
 	CategoryRowMap.clear();
 
 	RowNames = DataTableFunctionLibrary->Call<TArray<FName>, 0x8>(_("GetDataTableRowNames"), LootPackageTable, TArray<FName>());
@@ -603,12 +690,45 @@ void Athena::SpawnAthenaFloorLoot()
 
 void Athena::SpawnWarmupFloorLoot()
 {
-	auto AthenaFloorLootLocs_Warmup = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), World, FindObject(_(L"Tiered_Athena_FloorLoot_Warmup_C"), false, true), TArray<UObject*>());
-
-	for (auto AthenaFloorLootLoc_Warmup : AthenaFloorLootLocs_Warmup)
+	if (!bFixedbus)
 	{
-		auto Loot = Athena::Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaFloorLoot_Warmup"))));
-		for (auto LootElement : Loot) SpawnPickup(LootElement.ItemDefinition, LootElement.Count, AthenaFloorLootLoc_Warmup->Call<FVector>(_("K2_GetActorLocation")), false);
+		auto AthenaFloorLootLocs_Warmup = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), World, FindObject(_(L"Tiered_Athena_FloorLoot_Warmup_C"), false, true), TArray<UObject*>());
+
+		for (auto AthenaFloorLootLoc_Warmup : AthenaFloorLootLocs_Warmup)
+		{
+			auto Loot = Athena::Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaFloorLoot_Warmup"))));
+			for (auto LootElement : Loot) SpawnPickup(LootElement.ItemDefinition, LootElement.Count, AthenaFloorLootLoc_Warmup->Call<FVector>(_("K2_GetActorLocation")), false);
+		}
+	}
+}
+
+void Athena::SpawnBuildPreviews()
+{
+	if (GetEngineVersion().ToString().find(_("4.19")) != -1)
+	{
+		Wall = Core::SpawnActorEasy(FindObject(_(L"BuildingPlayerPrimitivePreview"), false, true), FVector(0,0,0), FRotator(0,0,0));
+		Wall->Call<UObject*>(_("GetBuildingMeshComponent"))->Call<bool>(_("SetStaticMesh"), FindObject(_(L"PBW_W1_Solid"), false, true));
+		Wall->Call<UObject*>(_("GetBuildingMeshComponent"))->Call(_("SetMaterial"), 0, PlayerController->Child(_("BuildPreviewMarkerMID")));
+		Wall->Call(_("OnBuildingActorInitialized"), char(5), char(0));
+		Wall->Call(_("SetActorHiddenInGame"), true);
+	
+		Floor = Core::SpawnActorEasy(FindObject(_(L"BuildingPlayerPrimitivePreview"), false, true), FVector(0,0,0), FRotator(0,0,0));
+		Floor->Call<UObject*>(_("GetBuildingMeshComponent"))->Call<bool>(_("SetStaticMesh"), FindObject(_(L"PBW_W1_Floor"), false, true));
+		Floor->Call<UObject*>(_("GetBuildingMeshComponent"))->Call(_("SetMaterial"), 0, PlayerController->Child(_("BuildPreviewMarkerMID")));
+		Floor->Call(_("OnBuildingActorInitialized"), char(5), char(1));
+		Floor->Call(_("SetActorHiddenInGame"), true);
+	
+		Stairs = Core::SpawnActorEasy(FindObject(_(L"BuildingPlayerPrimitivePreview"), false, true), FVector(0,0,0), FRotator(0,0,0));
+		Stairs->Call<UObject*>(_("GetBuildingMeshComponent"))->Call<bool>(_("SetStaticMesh"), FindObject(_(L"PBW_W1_StairW"), false, true));
+		Stairs->Call<UObject*>(_("GetBuildingMeshComponent"))->Call(_("SetMaterial"), 0, PlayerController->Child(_("BuildPreviewMarkerMID")));
+		Stairs->Call(_("OnBuildingActorInitialized"), char(5), char(5));
+		Stairs->Call(_("SetActorHiddenInGame"), true);
+	
+		Roof = Core::SpawnActorEasy(FindObject(_(L"BuildingPlayerPrimitivePreview"), false, true), FVector(0,0,0), FRotator(0,0,0));
+		Roof->Call<UObject*>(_("GetBuildingMeshComponent"))->Call<bool>(_("SetStaticMesh"), FindObject(_(L"PBW_W1_RoofC"), false, true));
+		Roof->Call<UObject*>(_("GetBuildingMeshComponent"))->Call(_("SetMaterial"), 0, PlayerController->Child(_("BuildPreviewMarkerMID")));
+		Roof->Call(_("OnBuildingActorInitialized"), char(5), char(6));
+		Roof->Call(_("SetActorHiddenInGame"), true);
 	}
 }
 
