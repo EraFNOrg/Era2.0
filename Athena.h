@@ -31,6 +31,7 @@ public:
 	static void SpawnPickup(class UObject* ItemDefinition, int Count, struct FVector Location, bool bToss = true);
 	static void GrantAbility(class UObject* Class);
 	static void SpawnBuildPreviews();
+	static void SpawnFloorLoot();
 
 	class Looting
 	{

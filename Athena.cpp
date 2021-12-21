@@ -58,9 +58,10 @@ void Athena::DropLoadingScreen()
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapSafeZoneBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("FullMapCircleBrush"))); !IsBadReadPtr(MAP)) *MAP = {};
-	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = IsBadReadPtr(&WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush"))) ? nullptr : WorldSettings->Child<FSlateBrush>(_("AircraftPathBrush")).ObjectResource;
+	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = FindObject(_(L"/Game/Athena/HUD/MiniMap/M_BusPath.M_BusPath"));
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = IsBadReadPtr(&WorldSettings->Child<FSlateBrush>(_("AthenaMapImage"))) ? nullptr : WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
 	if (auto MAP = &(GameState->Child<UObject*>(_("MinimapMaterial"))); !IsBadReadPtr(MAP)) (*MAP) = FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) ? FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) : FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena"));
+	
 
 	//Playlist
 	auto PlayList = FindObject(_(L"/Game/Athena/Playlists/Creative/Playlist_PlaygroundV2.Playlist_PlaygroundV2"));
@@ -648,6 +649,25 @@ vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 	LootPackageCalls.clear();
 	
 	return ReturnValue;
+}
+
+void Athena::SpawnFloorLoot()
+{
+	auto FloorLootActors = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), World, FindObject(_(L"Tiered_Athena_FloorLoot_01_C"), false, true), TArray<UObject*>());
+
+	for (auto element : FloorLootActors)
+	{
+		auto LootToSpawn = Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaFloorLoot"))));
+		for (auto element_ : LootToSpawn) SpawnPickup(element_.ItemDefinition, element_.Count, element->Call<FVector>(_("K2_GetActorLocation")), false);
+	}
+
+	auto FloorLootActors_Warmup = GameStatics->Call<TArray<UObject*>, 0x10>(_("GetAllActorsOfClass"), World, FindObject(_(L"Tiered_Athena_FloorLoot_Warmup_C"), false, true), TArray<UObject*>());
+
+	for (auto element : FloorLootActors_Warmup)
+	{
+		auto LootToSpawn = Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaFloorLoot_Warmup"))));
+		for (auto element_ : LootToSpawn) SpawnPickup(element_.ItemDefinition, element_.Count, element->Call<FVector>(_("K2_GetActorLocation")), false);
+	}
 }
 
 void Athena::SpawnBuildPreviews()

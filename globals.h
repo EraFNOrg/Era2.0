@@ -55,6 +55,8 @@ inline class UObject* Stairs;
 inline class UObject* Roof;
 inline vector<class UObject*> CharacterPartsArray;
 inline map<string, class UObject*> CallCache;
+inline map<string, int32> OffsetCache;
+inline map<pair<PVOID, string>, int32> StructOffsetCache;
 inline bool bLoadedInMatch = false;
 inline bool bDroppedFromAircraft = false;
 inline bool bPressedPlay = false;

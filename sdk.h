@@ -213,6 +213,11 @@ public:
 	template<typename T = UObject*>
 	T& Child(string name, bool bIsFunction = false)
 	{
+		if (OffsetCache.find(name) != OffsetCache.end())
+		{
+			return *(T*)(int64(this) + OffsetCache.find(name)->second);
+		}
+		
 		UObject* Class = this->Class;
 
 		//Scan UProperties
@@ -242,6 +247,8 @@ public:
 				if (Children->GetName() == name)
 				{
 					if (bIsFunction) return *(T*)(&*Children);
+
+					if (OffsetCache.find(name) == OffsetCache.end()) OffsetCache.insert(make_pair(name, *(int32*)(int64(Children) + offsets::Offset)));
 
 					return *(T*)(int64(this) + *(int32*)(int64(Children) + offsets::Offset));
 				}
@@ -280,6 +287,8 @@ public:
 
 				if (ChildrenProperties->GetName() == name)
 				{
+					if (OffsetCache.find(name) == OffsetCache.end()) OffsetCache.insert(make_pair(name, *(int32*)(int64(ChildrenProperties) + 0x4C)));
+					
 					return *(T*)(int64(this) + *(int32*)(int64(ChildrenProperties) + 0x4C));
 				}
 
@@ -661,6 +670,11 @@ struct Struct
 	template<typename T = UObject*>
 	T& Child(class UObject* StructObj, string VariableName)
 	{
+		if (StructOffsetCache.find({StructObj, VariableName}) != StructOffsetCache.end())
+		{
+			return *(T*)(int64(this) + StructOffsetCache.find({StructObj, VariableName})->second);
+		}
+		
 		UObject* Class = StructObj;
 
 		//Scan UProperties
@@ -689,6 +703,8 @@ struct Struct
 
 				if (Children->GetName() == VariableName)
 				{
+					if (StructOffsetCache.find({StructObj, VariableName}) == StructOffsetCache.end()) StructOffsetCache.insert(make_pair(make_pair(StructObj, VariableName), *(int32*)(int64(Children) + offsets::Offset)));
+					
 					return *(T*)(int64(this) + *(int32*)(int64(Children) + offsets::Offset));
 				}
 
@@ -724,8 +740,13 @@ struct Struct
 					}
 				}
 
-				if (ChildrenProperties->GetName() == VariableName) return *(T*)(int64(this) + *(int32*)(int64(ChildrenProperties) + 0x4C));
-
+				if (ChildrenProperties->GetName() == VariableName)
+				{
+					if (StructOffsetCache.find({StructObj, VariableName}) == StructOffsetCache.end()) StructOffsetCache.insert(make_pair(make_pair(StructObj, VariableName), *(int32*)(int64(ChildrenProperties) + 0x4C)));
+					
+					return *(T*)(int64(this) + *(int32*)(int64(ChildrenProperties) + 0x4C));
+				}
+				
 				ChildrenProperties = ChildrenProperties->Next;
 			}
 
