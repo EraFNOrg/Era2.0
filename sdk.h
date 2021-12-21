@@ -536,6 +536,13 @@ public:
 	int32_t SerialNumber;
 };
 
+struct GEHard
+{
+	UObject* Effect;
+	float Level;
+	char pad[0x4];
+};
+
 struct TUObjectArrayNew
 {
 	FUObjectItem* Objects[9];

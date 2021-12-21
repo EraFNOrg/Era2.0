@@ -32,6 +32,7 @@ public:
 	static void GrantAbility(class UObject* Class);
 	static void SpawnBuildPreviews();
 	static void SpawnFloorLoot();
+	static void GrantEffect(class UObject* Effect, float Level);
 
 	class Looting
 	{

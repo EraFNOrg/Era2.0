@@ -152,6 +152,31 @@ void Athena::OnServerExecuteInventoryItem(FGuid ItemGuid)
 				Pawn->Call<bool>(_("PickUpActor"), nullptr, CurrentItemDefinition);
 				Pawn->Child(_("CurrentWeapon"))->Child<FGuid>(_("ItemEntryGuid")) = Instance->Call<FGuid>(_("GetItemGuid"));
 			}
+			else if (CurrentItemDefinition->IsA(FindObject(_(L"AthenaGadgetItemDefinition"), false, true)) ||
+				CurrentItemDefinition->IsA(FindObject(_(L"FortGadgetItemDefinition"), false, true)))
+			{
+				if (CurrentItemDefinition->GetName() == _("AGID_CarminePack"))
+				{
+					Pawn->Call(_("ServerChoosePart"), FindObject(_(L"Dev_TestAsset_Head_M_XL"), false, true)->Child<char>(_("CharacterPartType")), FindObject(_(L"Dev_TestAsset_Head_M_XL"), false, true));
+					Pawn->Call(_("ServerChoosePart"), FindObject(_(L"Dev_TestAsset_Body_M_XL"), false, true)->Child<char>(_("CharacterPartType")), FindObject(_(L"Dev_TestAsset_Body_M_XL"), false, true));
+				}
+				
+				PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterParts"));
+				PlayerController->Child(_("PlayerState"))->Call(_("OnRep_CharacterData"));
+
+				//Grant abilities
+				auto AbilitySet = kismetSystemLib->Call<UObject*>(_("Conv_SoftObjectReferenceToObject"), CurrentItemDefinition->Child<SoftObjectPtr>(_("AbilitySet")));
+				for (auto AbilityClass : AbilitySet->Child<TArray<UObject*>>(_("GameplayAbilities")))
+					Athena::GrantAbility(AbilityClass);
+				
+				for (auto Effect : AbilitySet->Child<TArray<GEHard>>(_("GrantedGameplayEffects")))
+					Athena::GrantEffect(Effect.Effect, Effect.Level);
+				
+				//set anim instance
+				Pawn->Child(_("Mesh"))->Call(_("SetAnimInstanceClass"), CurrentItemDefinition->Child(_("AnimBPOverride")));
+
+				Pawn->Call<UObject*>(_("EquipWeaponDefinition"), CurrentItemDefinition->Call<UObject*>(_("GetDecoItemDefinition")), Instance->Call<FGuid>(_("GetItemGuid")));
+			}
 			else
 			{
 				Pawn->Call<UObject*>(_("EquipWeaponDefinition"), CurrentItemDefinition, Instance->Call<FGuid>(_("GetItemGuid")));
@@ -470,8 +495,17 @@ void Athena::SpawnPickup(UObject* ItemDefinition, int Count, FVector Location, b
 	Pickup->Call(_("TossPickup"), Location, Pawn, 1, bToss);
 }
 
+void Athena::GrantEffect(UObject* Effect, float Level)
+{
+	if (!Effect) return;
+	
+	Pawn->Child(_("AbilitySystemComponent"))->Call<FActiveGameplayEffectHandle>(_("BP_ApplyGameplayEffectToSelf"), Effect, Level, FGameplayEffectContextHandle());
+}
+
 void Athena::GrantAbility(UObject* Class)
 {
+	if (!Class) return;
+	
 	static UObject* GameplayEffect = FindObject(_(L"/Game/Athena/Items/Consumables/PurpleStuff/GE_Athena_PurpleStuff.GE_Athena_PurpleStuff_C"));
 	if (!GameplayEffect) GameplayEffect = FindObject(_(L"/Game/Athena/Items/Consumables/PurpleStuff/GE_Athena_PurpleStuff_Health.GE_Athena_PurpleStuff_Health_C"));
 
@@ -560,6 +594,8 @@ vector<Athena::Looting::LootData> Athena::Looting::PickLootDrops(FName Category)
 
 		RandomValue -= val->Child<float>(LootTierData->Child(_("RowStruct")), _("Weight"));
 	}
+
+	if (!PickedRow) return {};
 
 	//Now get the num of loot packages to spawn, find the item defs, counts, and return.
 	float NumLootPackageDrops = PickedRow->Child<float>(LootTierData->Child(_("RowStruct")), _("NumLootPackageDrops"));
