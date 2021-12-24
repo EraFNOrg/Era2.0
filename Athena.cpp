@@ -736,3 +736,49 @@ void Athena::SpawnBuildPreviews()
 	}
 }
 
+void Athena::PlayEmoteItem(UObject* MontageItemDefinition)
+{
+	if (!FindObject(_(L"GetAnimationHardReference"), false, true)) return;
+	
+	auto Montage = MontageItemDefinition->Call<UObject*>(_("GetAnimationHardReference"), char(6), char(3));
+	if (!IsBadReadPtr(Montage) && Montage)
+	{
+		Pawn->Child(_("Mesh"))->Call<UObject*>(_("GetAnimInstance"))->Call<float>(_("Montage_Play"), Montage, 1.f, char(0), 0.f, true);
+		bIsEmoting = true;
+	}
+}
+
+void Athena::Tick()
+{
+	if (bIsEmoting && (PlayerController->Child<bool>(_("bIsPlayerActivelyMoving")) ||
+		Pawn->Child(_("Mesh"))->Call<UObject*>(_("GetAnimInstance"))->Child<bool>(_("bIsJumping")) ||
+		Pawn->Child(_("Mesh"))->Call<UObject*>(_("GetAnimInstance"))->Child<bool>(_("bIsFalling"))))
+	{
+		bIsEmoting = !bIsEmoting;
+		Pawn->Call(_("ServerRootMotionInterruptNotifyStopMontage"), Pawn->Call<UObject*>(_("GetCurrentMontage")));
+	}
+
+	if (g_bIsVehicleVersion)
+	{
+		bool bIsInVehicle = Pawn->Call<bool>(_("IsInVehicle"));
+		Pawn->Child<char>(_("Role")) = bIsInVehicle ? char(2) : char(3);
+		if (bIsInVehicle) Pawn->Call<UObject*>(_("GetVehicle"))->Child<char>(_("Role")) = char(2);
+	}
+
+	if (Pawn)
+	{
+		if (bool game_bIsOutsideSafezone = Pawn->Child<bool>(_("bIsOutsideSafeZone"));
+		(game_bIsOutsideSafezone && !l_bIsOutsideSafeZone) ||
+		(!game_bIsOutsideSafezone && l_bIsOutsideSafeZone))
+		{
+			l_bIsOutsideSafeZone = !l_bIsOutsideSafeZone;
+			Pawn->Call(_("OnRep_IsOutsideSafeZone"));
+		}
+	}
+}
+
+void Athena::OnExitVehicle()
+{
+	Pawn->Child<char>(_("Role")) = char(3);
+	Pawn->Call<UObject*>(_("GetVehicle"))->Child<char>(_("Role")) = char(3);
+}

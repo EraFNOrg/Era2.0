@@ -63,6 +63,9 @@ inline bool bPressedPlay = false;
 inline bool bInFrontend = true;
 inline bool bCoreInitialized = false;
 inline bool bInfiniteAmmo = true;
+inline bool bIsEmoting = false;
+inline bool g_bIsVehicleVersion = false;
+inline bool l_bIsOutsideSafeZone = false;
 
 namespace offsets
 {

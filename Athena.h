@@ -33,6 +33,9 @@ public:
 	static void SpawnBuildPreviews();
 	static void SpawnFloorLoot();
 	static void GrantEffect(class UObject* Effect, float Level);
+	static void PlayEmoteItem(class UObject* MontageItemDefinition);
+	static void Tick();
+	static void OnExitVehicle();
 
 	class Looting
 	{

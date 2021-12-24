@@ -1,4 +1,6 @@
 #pragma once
+#include <functional>
+
 #include "core.h"
 #include "sdk.h"
 #include "Athena.h"
@@ -114,6 +116,22 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 		!bPressedPlay)
 	{
 		Core::PlayButton();
+	}
+	else if (FuncName.find(_("ServerPlayEmoteItem")) != -1)
+	{
+		Athena::PlayEmoteItem(*(UObject**)Params);
+	}
+	else if (FuncName.find(_("OnPawnEnterVehicle")) != -1)
+	{
+		g_bIsVehicleVersion = true;
+	}
+	else if (FuncName.find(_("ServerAttemptExitVehicle")) != -1)
+	{
+		Athena::OnExitVehicle();
+	}
+	else if (FuncName.find(_("Tick")) != -1 && Object == PlayerController)
+	{
+		Athena::Tick();
 	}
 
 	return PE(Object, Function, Params);
