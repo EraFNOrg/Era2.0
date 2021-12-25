@@ -129,6 +129,11 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	{
 		Athena::OnExitVehicle();
 	}
+	else if ((FuncName.find(_("ServerSpawnInventoryDrop")) != -1) || 
+		(FuncName.find(_("ServerAttemptInventoryDrop")) != -1))
+	{
+		Athena::DropInventoryItem(*(FGuid*)Params, *(int*)(int64(Params) + sizeof(FGuid)));
+	}
 	else if (FuncName.find(_("Tick")) != -1 && Object == PlayerController)
 	{
 		Athena::Tick();

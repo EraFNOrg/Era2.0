@@ -51,6 +51,9 @@ void Core::Setup()
 	//or freezing the game when adding to inventory in S9+ 
 	Realloc = decltype(Realloc)(FindPattern(_("E8 ? ? ? ? 48 89 03 48 8B 5C 24 ? 48 83 C4 20"), true, 1));
 
+	//Proper array functionsGenericArray_Add = decltype(GenericArray_Add)(FindPattern(_("40 53 41 57 48 83 EC 28 4D 8B F8 48 8B D9 48 85 C9 0F 84 ? ? ? ? 48 89 6C 24 ? 8B 69 08")));
+	GenericArray_Remove = decltype(GenericArray_Remove)(FindPattern(_("E8 ? ? ? ? 4C 8B C6 48 8B D7 48 8B CB E8 ? ? ? ? 83 F8 FF"), true, 1));
+	
 	//Initialize hardcoded offsets 
 	switch ((int)(stod(GetEngineVersion().ToString().substr(0, 4)) * 100))
 	{

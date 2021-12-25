@@ -247,9 +247,11 @@ void Athena::OnServerExecuteInventoryWeapon(UObject* FortWeapon)
 	auto ItemGuid = FortWeapon->Child<FGuid>(_("ItemEntryGuid"));
 
 	auto Instances = WorldInventory->Child<TArray<UObject*>>(_("ItemInstances"));
-	for (UObject* Instance : Instances) {
-		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instance->Call<FGuid>(_("GetItemGuid")), ItemGuid))
+	for (UObject* Instance : Instances)
+	{
+		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instance->Call<FGuid>(_("GetItemGuid")), ItemGuid)) {
 			Pawn->Call<UObject*>(_("EquipWeaponDefinition"), Instance->Call<UObject*>(_("GetItemDefinitionBP")), Instance->Call<FGuid>(_("GetItemGuid")));
+		}
 	}
 }
 
@@ -346,9 +348,17 @@ void Athena::ServerHandlePickup(UObject* Pickup)
 			AddToInventory(ItemDefinition, Count, char(0), i);
 			Athena::InventoryUpdate();
 			Pickup->Call(_("K2_DestroyActor"));
-			break;
+			return;
 		}
 	}
+	
+	auto CurrentFocusedSlot = (&Quickbars->Child<Struct>(_("PrimaryQuickBar")))->Child<int>(FindObject(_(L"/Script/FortniteGame.QuickBar")), _("CurrentFocusedSlot"));
+	if (CurrentFocusedSlot == 0) return;
+	auto ItemInstance = InventoryContext->Call<UObject*>(_("GetQuickBarSlottedItem"), char(0), CurrentFocusedSlot);
+	Athena::DropInventoryItem(ItemInstance->Call<FGuid>(_("GetItemGuid")), 1);
+	AddToInventory(ItemDefinition, Count, char(0), CurrentFocusedSlot);
+	Athena::InventoryUpdate();
+	Pickup->Call(_("K2_DestroyActor"));
 }
 
 void Athena::FixBuildingFoundations()
@@ -767,12 +777,15 @@ void Athena::Tick()
 
 	if (Pawn)
 	{
-		if (bool game_bIsOutsideSafezone = Pawn->Child<bool>(_("bIsOutsideSafeZone"));
-		(game_bIsOutsideSafezone && !l_bIsOutsideSafeZone) ||
-		(!game_bIsOutsideSafezone && l_bIsOutsideSafeZone))
+		if (bool* game_bIsOutsideSafezone = &Pawn->Child<bool>(_("bIsOutsideSafeZone"));
+		!IsBadReadPtr(game_bIsOutsideSafezone))
 		{
-			l_bIsOutsideSafeZone = !l_bIsOutsideSafeZone;
-			Pawn->Call(_("OnRep_IsOutsideSafeZone"));
+			if ((*game_bIsOutsideSafezone && !l_bIsOutsideSafeZone) ||
+			(!*game_bIsOutsideSafezone && l_bIsOutsideSafeZone))
+			{
+				l_bIsOutsideSafeZone = !l_bIsOutsideSafeZone;
+				Pawn->Call(_("OnRep_IsOutsideSafeZone"));
+			}
 		}
 	}
 }
@@ -781,4 +794,25 @@ void Athena::OnExitVehicle()
 {
 	Pawn->Child<char>(_("Role")) = char(3);
 	Pawn->Call<UObject*>(_("GetVehicle"))->Child<char>(_("Role")) = char(3);
+}
+
+void Athena::DropInventoryItem(FGuid ItemGuid, int Count)
+{
+	auto Instances = WorldInventory->Child<TArray<UObject*>>(_("ItemInstances"));
+	for (auto i = 0; i < Instances.count; i++)
+	{
+		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instances[i]->Call<FGuid>(_("GetItemGuid")), ItemGuid)) {
+			auto CurrentItemDef = Instances[i]->Call<UObject*>(_("GetItemDefinitionBP"));
+
+			//remove
+			GenericArray_Remove(&WorldInventory->Child<TArray<UObject*>>(_("ItemInstances")), ChildProperty(WorldInventory, _("ItemInstances")), i);
+			GenericArray_Remove(&WorldInventory->Child<TArray<char>>(_("ReplicatedEntries")), ChildProperty(WorldInventory, _("ReplicatedEntries")), i);
+
+			//update inventory
+			Athena::InventoryUpdate();
+
+			//drop the removed weapon
+			Athena::SpawnPickup(CurrentItemDef, Count, Pawn->Call<FVector>(_("K2_GetActorLocation")));
+		}
+	}
 }

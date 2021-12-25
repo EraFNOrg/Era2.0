@@ -763,3 +763,82 @@ struct Struct
 		return *(T*)(0);
 	}
 };
+
+inline PVOID ChildProperty(UObject* Obj, string name)
+{
+	UObject* Class = Obj->Class;
+
+	//Scan UProperties
+	while (Class)
+	{
+		UObject* Children = *(UObject**)(int64(Class) + offsets::Children);
+
+		if (!Children) {
+			Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+			continue;
+		}
+
+		while (Children)
+		{
+			if (Children->Class->GetName() == _("StructProperty"))
+			{
+				auto StructChildren = *(UObject**)(int64(*(UObject**)(int64(Children) + offsets::Class)) + offsets::Children);
+
+				while (StructChildren)
+				{
+					if (StructChildren->GetName() == name) return StructChildren;
+
+					StructChildren = *(UObject**)(int64(StructChildren) + offsets::Next);
+				}
+			}
+
+			if (Children->GetName() == name)
+			{
+				return Children;
+			}
+
+			Children = *(UObject**)(int64(Children) + offsets::Next);
+		}
+
+		Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+	}
+
+	//Scan FFields
+	Class = Obj->Class;
+
+	while (Class)
+	{	
+		FField* ChildrenProperties = *(FField**)(int64(Class) + 0x50);
+		
+		if (!ChildrenProperties->IsValid()) {
+			Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+			continue;
+		}
+
+		while (ChildrenProperties->IsValid())
+		{
+			if (ChildrenProperties->ClassPointer->GetName() == _("StructProperty"))
+			{
+				auto StructChildren = *(FField**)(int64(*(UObject**)(int64(ChildrenProperties) + offsets::Class)) + 0x50);
+
+				while (StructChildren)
+				{
+					if (StructChildren->GetName() == name) return StructChildren;
+
+					StructChildren = StructChildren->Next;
+				}
+			}
+
+			if (ChildrenProperties->GetName() == name)
+			{
+				return ChildrenProperties;
+			}
+
+			ChildrenProperties = ChildrenProperties->Next;
+		}
+
+		Class = *(UObject**)(int64(Class) + offsets::SuperClass);
+	}
+
+	return nullptr;
+}

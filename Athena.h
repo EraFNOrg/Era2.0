@@ -36,6 +36,7 @@ public:
 	static void PlayEmoteItem(class UObject* MontageItemDefinition);
 	static void Tick();
 	static void OnExitVehicle();
+	static void DropInventoryItem(struct FGuid ItemGuid, int Count);
 
 	class Looting
 	{

@@ -29,6 +29,7 @@ inline class UObject* (*SpawnActor)(class UObject* World, class UObject* Class, 
 inline bool (*GetDataTableRow)(class UObject* DataTable, struct FName Name, void* OutRowPtr);
 inline void* (*CopyScriptStruct)(class UObject* Struct, void* OutPtr, void* InPtr, int ArraySize);
 inline class UObject* (*StaticLoadObject)(class UObject*, class UObject*, const wchar_t*, const wchar_t*, int, void*, bool);
+inline void (*GenericArray_Remove)(PVOID TargetArray, PVOID Property, int ItemIndex);
 inline struct FString (*GetEngineVersion)();
 inline struct GObjects* GObjectArray;
 inline class UObject* PlayerController;
