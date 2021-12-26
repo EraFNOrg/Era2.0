@@ -398,6 +398,8 @@ void Athena::Loot(UObject* ReceivingActor)
 {
 	//Basic looting impl
 
+	if (!ReceivingActor) return;
+
 	if (strstr(ReceivingActor->Class->GetName().c_str(), _("Tiered_Chest")) &&
 		ReceivingActor->Class->GetName().find(_("Creative")) == -1)
 	{
@@ -415,9 +417,26 @@ void Athena::Loot(UObject* ReceivingActor)
 				SpawnPickup(Instance.ItemDefinition, Instance.Count, FinalLocation);
 			}
 
-			ReceivingActor->Child<float>(_("TimeUntilLootRegenerates")) = 1;
+			ReceivingActor->Child<float>(_("TimeUntilLootRegenerates")) = -1;
 		}
 	}
+	else if (strstr(ReceivingActor->Class->GetName().c_str(), _("AthenaSupplyDrop")))
+	{
+		auto Result = Looting::PickLootDrops(kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"Loot_AthenaSupplyDrop"))));
+
+		for (auto Instance : Result)
+		{
+			auto RightVector = kismetMathLib->Call<FVector>(_("GetRightVector"), ReceivingActor->Call<FRotator>(_("K2_GetActorRotation")));
+			RightVector.X = RightVector.X*64;
+			RightVector.Y = RightVector.Y*64;
+			auto FinalLocation = kismetMathLib->Call<FVector>(_("Add_VectorVector"), ReceivingActor->Call<FVector>(_("K2_GetActorLocation")), RightVector);
+			
+			SpawnPickup(Instance.ItemDefinition, Instance.Count, FinalLocation);
+		}
+
+		return;
+	}
+	else return;
 
 	kismetSystemLib->Call(_("SetBoolPropertyByName"), ReceivingActor, kismetStringLib->Call<FName>(_("Conv_StringToName"), FString(_(L"bAlreadySearched"))), true);
 	ReceivingActor->Call(_("OnRep_bAlreadySearched"));
@@ -760,7 +779,7 @@ void Athena::PlayEmoteItem(UObject* MontageItemDefinition)
 
 void Athena::Tick()
 {
-	if (bIsEmoting && (PlayerController->Child<bool>(_("bIsPlayerActivelyMoving")) ||
+	if (bIsEmoting && !PlayerController->Call<bool>(_("IsInAircraft")) && (PlayerController->Child<bool>(_("bIsPlayerActivelyMoving")) ||
 		Pawn->Child(_("Mesh"))->Call<UObject*>(_("GetAnimInstance"))->Child<bool>(_("bIsJumping")) ||
 		Pawn->Child(_("Mesh"))->Call<UObject*>(_("GetAnimInstance"))->Child<bool>(_("bIsFalling"))))
 	{
@@ -770,6 +789,8 @@ void Athena::Tick()
 
 	if (g_bIsVehicleVersion)
 	{
+		if (!Pawn) return;
+		
 		bool bIsInVehicle = Pawn->Call<bool>(_("IsInVehicle"));
 		Pawn->Child<char>(_("Role")) = bIsInVehicle ? char(2) : char(3);
 		if (bIsInVehicle) Pawn->Call<UObject*>(_("GetVehicle"))->Child<char>(_("Role")) = char(2);
@@ -802,8 +823,35 @@ void Athena::DropInventoryItem(FGuid ItemGuid, int Count)
 	for (auto i = 0; i < Instances.count; i++)
 	{
 		if (kismetGuidLib->Call<bool>(_("EqualEqual_GuidGuid"), Instances[i]->Call<FGuid>(_("GetItemGuid")), ItemGuid)) {
+			static auto InventoryContext = FindObject(_(L"/Script/BlueprintContext.Default__BlueprintContextLibrary"))->Call<UObject*>(_("GetContext"), GameViewportClient->Child(_("GameInstance"))->Child<TArray<UObject*>>(_("LocalPlayers"))[0], FindObject(_(L"/Script/FortniteUI.FortInventoryContext")));
+			
 			auto CurrentItemDef = Instances[i]->Call<UObject*>(_("GetItemDefinitionBP"));
 
+			//in case there's no need to drop the weapon
+			if (auto Diff = Instances[i]->Child<int>(_("Count")) - Count; Diff != 0)
+			{
+				GenericArray_Remove(&WorldInventory->Child<TArray<UObject*>>(_("ItemInstances")), ChildProperty(WorldInventory, _("ItemInstances")), i);
+				GenericArray_Remove(&WorldInventory->Child<TArray<char>>(_("ReplicatedEntries")), ChildProperty(WorldInventory, _("ReplicatedEntries")), i);
+
+				int QuickbarSlot = 10; //bad slot on purpose
+				
+				for (int j = 0; j < 6; ++j)
+				{
+					if (InventoryContext->Call<UObject*>(_("GetQuickBarSlottedItem"), char(0), j) == Instances[i]) {
+						QuickbarSlot = j;
+						break;
+					}
+				}
+
+				AddToInventory(CurrentItemDef, Diff, char(0), Diff);
+
+				Athena::InventoryUpdate();
+
+				Athena::SpawnPickup(CurrentItemDef, Count, Pawn->Call<FVector>(_("K2_GetActorLocation")));
+
+				return;
+			}
+			
 			//remove
 			GenericArray_Remove(&WorldInventory->Child<TArray<UObject*>>(_("ItemInstances")), ChildProperty(WorldInventory, _("ItemInstances")), i);
 			GenericArray_Remove(&WorldInventory->Child<TArray<char>>(_("ReplicatedEntries")), ChildProperty(WorldInventory, _("ReplicatedEntries")), i);
@@ -813,6 +861,14 @@ void Athena::DropInventoryItem(FGuid ItemGuid, int Count)
 
 			//drop the removed weapon
 			Athena::SpawnPickup(CurrentItemDef, Count, Pawn->Call<FVector>(_("K2_GetActorLocation")));
+			
+			for (int j = 0; j < 6; ++j)
+			{
+				if (InventoryContext->Call<UObject*>(_("GetQuickBarSlottedItem"), char(0), j)) {
+					Quickbars->Call(_("ServerActivateSlotInternal"), char(0), j, 0.f, false, true);
+					break;
+				}
+			}
 		}
 	}
 }

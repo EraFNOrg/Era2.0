@@ -22,6 +22,8 @@ struct SpawnActorParams
 	unsigned char Parms[0x40];
 };
 
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+typedef void (*api_init_thread)(unsigned short int Port);
 inline void* (*PE)(class UObject* Object, class UObject* Function, PVOID Params) = nullptr;
 inline class UObject* (*StaticFindObject)(class UObject* Class, void* Outer, const wchar_t* Name, bool ExactClass);
 inline void* (*Realloc)(void* Block, SIZE_T NewSize, uint32 Alignment);

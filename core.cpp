@@ -4,8 +4,6 @@
 #include "sdk.h"
 #include "peh.h"
 #include "Athena.h"
-#include "Libraries/era_api.h"
-#pragma comment(lib, "Libraries/era_api.lib")
 
 UObject* Core::SpawnActorEasy(UObject* Class, FVector Location, FRotator Rotation)
 {
@@ -18,8 +16,24 @@ UObject* Core::SpawnActorEasy(UObject* Class, FVector Location, FRotator Rotatio
 
 void Core::Setup()
 {
-	//Start the backend
-	api_init_thread(4444);
+	wchar_t DllPath[MAX_PATH] = {0};
+	GetModuleFileName((HINSTANCE)&__ImageBase, DllPath, _countof(DllPath));
+
+	wstring sDllPath = wstring(DllPath);
+	sDllPath.erase(sDllPath.find(_(L"EraV2.dll")));
+	sDllPath.append(_(L"era_api.dll"));
+
+	HINSTANCE Library = LoadLibrary(sDllPath.c_str());
+	if (!Library)
+	{
+		MessageBoxA(0,_("The server could not be started. Exiting...\n"),_("ERA"),MB_ICONERROR);
+		exit(0);
+	};
+
+	api_init_thread fn = (api_init_thread)GetProcAddress(Library, _("api_init_thread"));
+
+	//start the backend!!
+	fn(4444);
 	
 	Redirect::CurlSet = decltype(Redirect::CurlSet)(FindPattern(_("48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 48 83 EC 30 33 ED 49 8B F0 48 8B D9")));
 	Redirect::CurlEasy = decltype(Redirect::CurlEasy)(FindPattern(_("89 54 24 10 4C 89 44 24 18 4C 89 4C 24 20 48 83 EC 28 48 85 C9 75 08 8D 41 2B 48 83 C4 28 C3 4C")));
@@ -51,8 +65,8 @@ void Core::Setup()
 	//or freezing the game when adding to inventory in S9+ 
 	Realloc = decltype(Realloc)(FindPattern(_("E8 ? ? ? ? 48 89 03 48 8B 5C 24 ? 48 83 C4 20"), true, 1));
 
-	//Proper array functionsGenericArray_Add = decltype(GenericArray_Add)(FindPattern(_("40 53 41 57 48 83 EC 28 4D 8B F8 48 8B D9 48 85 C9 0F 84 ? ? ? ? 48 89 6C 24 ? 8B 69 08")));
-	GenericArray_Remove = decltype(GenericArray_Remove)(FindPattern(_("E8 ? ? ? ? 4C 8B C6 48 8B D7 48 8B CB E8 ? ? ? ? 83 F8 FF"), true, 1));
+	//Proper array functions
+	GenericArray_Remove = decltype(GenericArray_Remove)(FindPattern(_("E8 ? ? ? ? 4C 8B C6 48 8B D7 48 8B CB E8 ? ? ? ? 83 F8 FF"), true, 1) ? FindPattern(_("E8 ? ? ? ? 4C 8B C6 48 8B D7 48 8B CB E8 ? ? ? ? 83 F8 FF"), true, 1) : FindPattern(_("E8 ? ? ? ? 4D 8B 75 78 33 ED 8B 47 08 BB ? ? ? ? 45 8B 7E 3C"), true, 1));
 	
 	//Initialize hardcoded offsets 
 	switch ((int)(stod(GetEngineVersion().ToString().substr(0, 4)) * 100))
