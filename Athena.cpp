@@ -61,7 +61,6 @@ void Athena::DropLoadingScreen()
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("AircraftPathBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = FindObject(_(L"/Game/Athena/HUD/MiniMap/M_BusPath.M_BusPath"));
 	if (auto MAP = &(GameState->Child<FSlateBrush>(_("MinimapBackgroundBrush"))); !IsBadReadPtr(MAP)) (*MAP).ObjectResource = IsBadReadPtr(&WorldSettings->Child<FSlateBrush>(_("AthenaMapImage"))) ? nullptr : WorldSettings->Child<FSlateBrush>(_("AthenaMapImage")).ObjectResource;
 	if (auto MAP = &(GameState->Child<UObject*>(_("MinimapMaterial"))); !IsBadReadPtr(MAP)) (*MAP) = FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) ? FindObject(_(L"/Game/Athena/Apollo/Maps/UI/M_MiniMapApollo.M_MiniMapApollo")) : FindObject(_(L"/Game/Athena/HUD/MiniMap/M_MiniMapAthena.M_MiniMapAthena"));
-	
 
 	//Playlist
 	auto PlayList = FindObject(_(L"/Game/Athena/Playlists/Creative/Playlist_PlaygroundV2.Playlist_PlaygroundV2"));
@@ -76,6 +75,9 @@ void Athena::DropLoadingScreen()
 		GameState->Call(_("OnRep_CurrentPlaylistData"));
 		GameState->Call(_("OnRep_CurrentPlaylistInfo"));
 	}
+
+	if (auto BusOverride = FindObject(_(L"BBID_WinterBus"), false, true); BusOverride) PlayerController->Child(_("BattleBus")) = BusOverride;
+	Pawn->Call(_("OnRep_CustomizationLoadout"));
 }
 
 void Athena::InventoryUpdate()
@@ -384,6 +386,7 @@ void Athena::ServerHandlePickup(UObject* Pickup)
 	Athena::DropInventoryItem(ItemInstance->Call<FGuid>(_("GetItemGuid")), ItemInstance->Child<int>(_("Count")), false);
 	AddToInventory(ItemDefinition, Count, char(0), CurrentFocusedSlot);
 	Athena::InventoryUpdate();
+	Quickbars->Call(_("ServerActivateSlotInternal"), char(0), CurrentFocusedSlot, 0.f, false);
 	Pickup->Call(_("K2_DestroyActor"));
 }
 
@@ -877,14 +880,14 @@ void Athena::DropInventoryItem(FGuid ItemGuid, int Count, bool ShouldCheckForCou
 
 			//update inventory
 			Athena::InventoryUpdate();
-
+			
 			//drop the removed weapon
 			Athena::SpawnPickup(CurrentItemDef, Count, Pawn->Call<FVector>(_("K2_GetActorLocation")));
 			
-			for (int j = 0; j < 6; ++j)
+			for (int j = ((&Quickbars->Child<Struct>(_("PrimaryQuickBar")))->Child<int>(FindObject(_(L"/Script/FortniteGame.QuickBar")), _("CurrentFocusedSlot")) - 1); j >= 0; j--)
 			{
 				if (InventoryContext->Call<UObject*>(_("GetQuickBarSlottedItem"), char(0), j)) {
-					Quickbars->Call(_("ServerActivateSlotInternal"), char(0), j, 0.f, false, true);
+					Quickbars->Call(_("ServerActivateSlotInternal"), char(0), j, 0.f, false);
 					break;
 				}
 			}
