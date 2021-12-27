@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <vector>
+#include <string>
 
 class Athena
 {
@@ -36,7 +37,7 @@ public:
 	static void PlayEmoteItem(class UObject* MontageItemDefinition);
 	static void Tick();
 	static void OnExitVehicle();
-	static void DropInventoryItem(struct FGuid ItemGuid, int Count);
+	static void DropInventoryItem(struct FGuid ItemGuid, int Count, bool ShouldCheckForCount = true);
 
 	class Looting
 	{
@@ -47,7 +48,7 @@ public:
 			int Count;
 		};
 		
-		static std::vector<LootData> PickLootDrops(struct FName Category);
+		static std::vector<LootData> PickLootDrops(std::string Category);
 	};
 private:
 };

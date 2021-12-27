@@ -12,6 +12,14 @@ using namespace std;
 
 //COREUOBJECT classes
 
+template<typename T, typename T1>
+class TPair
+{
+public:
+	T Value;
+	T1 Key;
+};
+
 template<class T>
 class TArray
 {
@@ -159,7 +167,7 @@ public:
 	char Flags;
 
 	bool IsValid()
-	{
+	{ 
 		return !IsBadReadPtr(&Name);
 	}
 
@@ -191,6 +199,20 @@ public:
 		return this->Class == _Class;
 	}
 
+	bool IsChild(UObject* _Class)
+	{
+		UObject* __Class = this->Class;
+		
+		while (__Class)
+		{
+			if (__Class == _Class) return true;
+			
+			__Class = *(UObject**)(int64(__Class) + offsets::SuperClass);
+		}
+
+		return false;
+	}
+
 	string GetName()
 	{
 		return Name.ToString();
@@ -210,12 +232,24 @@ public:
 		return temp;
 	}
 
+	int32 EnumIndex(string EnumName)
+	{
+		TArray<TPair<FName, int64>> NamesList = *reinterpret_cast<TArray<TPair<FName, int64>>*>(int64(this) + 0x40);
+
+		for (int i = 0; i < NamesList.count; i++)
+		{
+			if (NamesList[i].Value.ToString().erase(NamesList[i].Value.ToString().find(this->GetName()),this->GetName().length() + 2) == EnumName) return i;
+		}
+		
+		return 0; //not found :((
+	}
+	
 	template<typename T = UObject*>
-	T& Child(string name, bool bIsFunction = false)
+	T& Child(string name, bool bIsFunction = false, bool bUseCache = true)
 	{
 		if (OffsetCache.find(name) != OffsetCache.end())
 		{
-			return *(T*)(int64(this) + OffsetCache.find(name)->second);
+			if (bUseCache) return *(T*)(int64(this) + OffsetCache.find(name)->second);
 		}
 		
 		UObject* Class = this->Class;
@@ -640,7 +674,7 @@ inline UObject* FindObject(const wchar_t* Name, bool bLoadObject = false, bool b
 inline UObject* FindObjectFromGObj(string Name)
 {
 	if (!GObjectArray) return nullptr;
-
+	
 	for (int i = 0; i < GObjectArray->ObjectCount; ++i)
 	{
 		UObject* object = GObjectArray->FindObjectById(i);
@@ -654,6 +688,7 @@ inline UObject* FindObjectFromGObj(string Name)
 			return object;
 		}
 	}
+
 	return nullptr;
 }
 
