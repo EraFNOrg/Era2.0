@@ -106,9 +106,7 @@ void Core::InitializeHook()
 	freopen_s(&fp, "CONOUT$", "w", stdout);
 	freopen_s(&fp, "CONOUT$", "w", stderr);
 
-	printf(_("EraV2 - discord.gg/erafn"));
-
-	FreeConsole();
+	printf("EraV3! 99 percent made by me!\n");
 
 	GameStatics = FindObject(_(L"/Script/Engine.Default__GameplayStatics"));
 	kismetMathLib = FindObject(_(L"/Script/Engine.Default__KismetMathLibrary"));
@@ -178,7 +176,7 @@ void Core::PlayButton()
 	}
 	else
 	{
-		PlayerController->Call(_("SwitchLevel"), FString(_(L"Athena_Terrain")));
+		PlayerController->Call(_("SwitchLevel"), FString(_(L"/Game/Valkyrie/Modes/Domino/Levels/Domino_WaterLevel?game=/Game/Valkyrie/Modes/Domino/Athena_GameMode_Domino.Athena_GameMode_Domino_C")));
 	}
 
 	bPressedPlay = !bPressedPlay;
@@ -196,7 +194,7 @@ void Core::OnReadyToStartMatch()
 	Athena::DestroyLods();
 	Athena::DropLoadingScreen();
 	Athena::FixBuildingFoundations();
-	Athena::InitializeInventory();
+	// Athena::InitializeInventory();
 	Athena::GrantDefaultAbilities();
 	Athena::SpawnBuildPreviews();
 }

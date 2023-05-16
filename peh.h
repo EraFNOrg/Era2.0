@@ -14,8 +14,7 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	//better performance 
 	string FuncName = Function->GetName();
 
-	if (FuncName.find(_("ReadyToStartMatch")) != -1 &&
-		!bLoadedInMatch)
+	if (FuncName.find(_("ReadyToStartMatch")) != -1 && !bLoadedInMatch)
 	{
 		Core::OnReadyToStartMatch();
 	}
@@ -137,6 +136,15 @@ inline void* ProcessEvent(UObject* Object, UObject* Function, PVOID Params)
 	else if (FuncName.find(_("Tick")) != -1 && Object == PlayerController)
 	{
 		Athena::Tick();
+	}
+	// Domino specific
+	else if (FuncName.find("GiveSwordsToAll") != -1)
+	{
+		return nullptr;
+	}
+	else if (FuncName.find("RemoveSwordFromAll") != -1)
+	{
+		return nullptr;
 	}
 
 	return PE(Object, Function, Params);

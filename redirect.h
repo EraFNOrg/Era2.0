@@ -70,7 +70,7 @@ namespace Redirect
 
 			returnValue = CurlSetHook(A, B, Url.c_str());
 		}
-		else if (B == 10004) returnValue = CurlSetHook(A, B, "");
+		// else if (B == 10004) returnValue = CurlSetHook(A, B, "");
 		else returnValue = CurlSet(A, B, argument);
 
 		va_end(argument);

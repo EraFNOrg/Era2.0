@@ -120,7 +120,7 @@ void Athena::InitializeInventory()
 
 	auto StartingItems = GameMode->Child<TArray<FItemAndCount>>(_("StartingItems"));
 
-	AddToInventory(PlayerController->Child(_("Pickaxe"))->Child(_("WeaponDefinition")), 1, char(0), 0);
+    AddToInventory(PlayerController->Child(_("Pickaxe"))->Child(_("WeaponDefinition")), 1, char(0), 0);
 	AddToInventory(StartingItems[0].Item, 1, char(1), 0);
 	AddToInventory(StartingItems[1].Item, 1, char(1), 1);
 	AddToInventory(StartingItems[2].Item, 1, char(1), 2);
@@ -302,6 +302,9 @@ void Athena::CheatScript(const char* script)
 
 		auto CattusDoggus = FindObject(_(L"/Game/Athena/Maps/Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.BP_CattusDoggus_Scripting_2"));
 		auto NightNight = FindObject(_(L"/Game/Athena/Maps/Athena_POI_Foundations.Athena_POI_Foundations.PersistentLevel.BP_NightNight_Scripting_2"));
+		auto Domino = FindObject(L"/Game/Valkyrie/Modes/Domino/Levels/Domino_WaterLevel.Domino_WaterLevel.PersistentLevel.Domino_Scripting_2");
+
+		printf("Domino: %p\n", Domino);
 
 		if (CattusDoggus)
 		{
@@ -314,6 +317,12 @@ void Athena::CheatScript(const char* script)
 		{
 			NightNight->Call<bool>(_("LoadNightNightLevel"));
 			NightNight->Call(_("startevent"));
+
+			bEventStarted = !bEventStarted;
+		}
+		else if (Domino)
+		{
+			Domino->Call<bool>("StartEvent");
 
 			bEventStarted = !bEventStarted;
 		}
